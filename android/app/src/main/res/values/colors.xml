@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="blue_primary">#1677F2</color>
+    <color name="blue_deep">#075FDD</color>
+    <color name="navy">#0A1F54</color>
+    <color name="background">#F2F7FF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="secondary_text">#44638C</color>
+    <color name="success">#00A67D</color>
+    <color name="error">#E5484D</color>
+    <color name="line">#D8E5F5</color>
+</resources>

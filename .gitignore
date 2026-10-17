@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.npm-cache/
+.gradle-cache/
+.android-home/
+.gradle/
+local.properties
+*.iml
+.idea/
+.DS_Store
+*.log
+build/
+test-results/
+web/test-results/

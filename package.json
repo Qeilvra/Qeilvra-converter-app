@@ -1,0 +1,11 @@
+{
+  "name": "fileflow-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "test": "npm --prefix web run test",
+    "typecheck": "npm --prefix web run typecheck"
+  }
+}

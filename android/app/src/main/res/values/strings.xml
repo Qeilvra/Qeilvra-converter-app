@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FileFlow</string>
+    <string name="tagline">All your file tools in one place</string>
+    <string name="hero_title">Convert, compress, edit &amp; share</string>
+    <string name="hero_subtitle">Fast. Simple. Private.</string>
+    <string name="available_now">Available now</string>
+    <string name="image_compressor">Image Compressor</string>
+    <string name="compress_description">Reach a measured maximum file size without uploading.</string>
+    <string name="more_tools_progress">More native tools are in validation. Only tested workflows are shown as available.</string>
+    <string name="pdf_to_excel">PDF to Excel</string>
+    <string name="pdf_to_word">PDF to Word</string>
+    <string name="word_to_pdf">Word to PDF</string>
+    <string name="pdf_compressor">PDF Compressor</string>
+    <string name="pdf_editor">PDF Editor</string>
+    <string name="image_to_pdf">Image to PDF</string>
+    <string name="image_converter">Image Converter</string>
+    <string name="document_scanner">Document Scanner</string>
+    <string name="prepare_upload">Prepare for Upload</string>
+    <string name="capture_page">Capture page</string>
+    <string name="add_images">Add images</string>
+    <string name="crop_page">Crop selected page</string>
+    <string name="apply_crop">Apply crop</string>
+    <string name="native_limitations">Document conversions run locally. Text and table recovery is best-effort; scanned PDFs require OCR and complex Office layout is not reproduced.</string>
+    <string name="choose_file">Choose file</string>
+    <string name="choose_pdfs">Choose PDFs</string>
+    <string name="process_file">Process file</string>
+    <string name="save_output">Save output</string>
+    <string name="share_output">Share output</string>
+    <string name="editable_preview">Editable extracted content</string>
+    <string name="no_file_selected">No file selected</string>
+    <string name="ready">Ready.</string>
+    <string name="recent">Recent</string>
+    <string name="settings">Settings</string>
+    <string name="recent_activity">Recent activity</string>
+    <string name="clear_history">Clear history</string>
+    <string name="dark_theme">Dark theme</string>
+    <string name="urdu_language">Urdu interface</string>
+    <string name="privacy_summary">Privacy: documents are processed locally. Recent activity stores filenames, operation names, dates and measured sizes only. The development build requests only Google test ads after the consent flow; document bytes are never sent with ad requests.</string>
+    <string name="terms_summary">Limitations: PDF and Office layouts differ. Text and table extraction is best-effort, scanned documents require OCR, and already optimized files may not become smaller.</string>
+    <string name="ad_privacy_options">Ad privacy options</string>
+    <string name="back">Back</string>
+    <string name="select_image">Select image</string>
+    <string name="choose_image">Choose image</string>
+    <string name="choose_target">Choose target size</string>
+    <string name="quality_value">Starting quality: %1$d%%</string>
+    <string name="compress_now">Compress now</string>
+    <string name="save_image">Save image</string>
+    <string name="share_image">Share image</string>
+    <string name="privacy_local">Processed locally. FileFlow does not upload this image.</string>
+    <string name="ready_to_compress">Ready to compress.</string>
+    <string name="processing_locally">Processing locally…</string>
+    <string name="compression_failed">Compression failed. Try a smaller image.</string>
+    <string name="compression_success">Ready · %1$s · %2$d × %3$d px</string>
+    <string name="compression_target_missed">Could not safely reach %1$d KB. Measured output: %2$s.</string>
+    <string name="target_error">Enter a target from 10 KB to 10240 KB.</string>
+    <string name="custom_kb">Custom KB</string>
+    <string name="saved_successfully">Image saved successfully.</string>
+    <string name="invalid_image">This file is not a supported JPG, PNG or WebP image.</string>
+    <string name="image_too_large">Choose an image smaller than 30 MB.</string>
+    <string name="back_symbol">←</string>
+    <string name="more_symbol">›</string>
+    <string name="private_by_design">PRIVATE BY DESIGN</string>
+    <string name="reduce_file_size">Reduce file size</string>
+    <string name="compress_explanation">Compress JPG, PNG or WebP while measuring the actual output.</string>
+    <string name="image_preview_description">Selected or compressed image preview</string>
+    <string name="no_image_selected">No image selected</string>
+    <string name="target_20_kb">20 KB</string>
+    <string name="target_50_kb">50 KB</string>
+    <string name="target_100_kb">100 KB</string>
+    <string name="target_200_kb">200 KB</string>
+    <string name="target_500_kb">500 KB</string>
+    <string name="custom">Custom</string>
+    <string name="default_target_kb">100</string>
+    <string name="default_max_dimension">600</string>
+    <string name="default_upload_target_kb">200</string>
+    <string name="default_quality">Starting quality: 82%%</string>
+    <string name="max_width_px">Max width (px)</string>
+    <string name="max_height_px">Max height (px)</string>
+    <string name="maximum_size_kb">Maximum size (KB)</string>
+    <string name="crop_top">Top %%</string>
+    <string name="crop_right">Right %%</string>
+    <string name="crop_bottom">Bottom %%</string>
+    <string name="crop_left">Left %%</string>
+    <string name="recent_metadata_only">Metadata only; generated file copies are not retained by FileFlow.</string>
+    <string name="no_recent_activity">No recent activity.</string>
+    <string name="description_pdf_excel">Extract aligned selectable text, edit the tabular preview, then export a real XLSX workbook.</string>
+    <string name="description_pdf_word">Extract selectable text to an editable preview and create a valid DOCX. Complex layout and images are not reproduced.</string>
+    <string name="description_word_pdf">Extract readable DOCX paragraphs and create a text-focused PDF. Review the preview before saving.</string>
+    <string name="description_pdf_compress">Rebuild the PDF structure locally and report the measured result. Image streams are preserved, so some files will not shrink.</string>
+    <string name="description_pdf_editor">Merge PDFs, rotate every page, or split a PDF into individual files in a ZIP archive.</string>
+    <string name="description_image_convert">Convert a real JPG, PNG or WebP image locally. JPEG replaces transparent pixels with white.</string>
+    <string name="description_prepare_upload">Prepare a photo, signature or document to measured size and maximum dimensions. Verify the destination portal’s current rules.</string>
+    <string name="description_scanner">Capture, rotate, manually crop and arrange up to 50 pages, then create a multipage PDF. Photograph pages squarely; automatic perspective correction is not available.</string>
+    <string name="description_image_pdf">Arrange multiple JPG, PNG or WebP images and create a real multipage PDF locally.</string>
+    <string name="crop_page_number">Crop page %1$d (0–45%% per edge)</string>
+    <string name="page_number_rotation">Page %1$d · %2$d°</string>
+    <string name="page_number">Page %1$d</string>
+    <string name="file_saved_successfully">File saved successfully.</string>
+    <string name="selected_file_size">%1$s · %2$s</string>
+    <string name="selected_files_size">%1$s\n%2$s</string>
+    <string name="image_item">%1$d. %2$s</string>
+    <string name="image_item_rotation">%1$d. %2$s · %3$d°</string>
+    <string name="recent_item">%1$s\n%2$s · %3$s\n%4$s</string>
+    <string-array name="pdf_editor_actions">
+        <item>Edit, reorder or delete pages</item>
+        <item>Merge selected PDFs</item>
+        <item>Rotate every page 90°</item>
+        <item>Split into individual PDFs (ZIP)</item>
+    </string-array>
+    <string-array name="upload_presets">
+        <item>Profile photo · 600×600 · 200 KB</item>
+        <item>Passport style · 413×531 · 100 KB</item>
+        <item>Signature · 600×200 · 50 KB</item>
+        <item>Document · 1600×2200 · 500 KB</item>
+    </string-array>
+</resources>

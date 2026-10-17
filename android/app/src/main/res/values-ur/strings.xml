@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">فائل فلو</string>
+    <string name="tagline">آپ کے تمام فائل ٹولز ایک جگہ</string>
+    <string name="hero_title">تبدیل، کمپریس، ترمیم اور شیئر کریں</string>
+    <string name="hero_subtitle">تیز۔ آسان۔ نجی۔</string>
+    <string name="available_now">دستیاب ٹولز</string>
+    <string name="image_compressor">تصویر کمپریسر</string>
+    <string name="compress_description">اپ لوڈ کیے بغیر مطلوبہ فائل سائز حاصل کریں۔</string>
+    <string name="more_tools_progress">مزید مقامی ٹولز کی جانچ جاری ہے۔ صرف جانچے گئے طریقے دستیاب دکھائے گئے ہیں۔</string>
+    <string name="pdf_to_excel">پی ڈی ایف سے ایکسل</string>
+    <string name="pdf_to_word">پی ڈی ایف سے ورڈ</string>
+    <string name="word_to_pdf">ورڈ سے پی ڈی ایف</string>
+    <string name="pdf_compressor">پی ڈی ایف کمپریسر</string>
+    <string name="pdf_editor">پی ڈی ایف ایڈیٹر</string>
+    <string name="image_to_pdf">تصویر سے پی ڈی ایف</string>
+    <string name="image_converter">تصویر کنورٹر</string>
+    <string name="document_scanner">دستاویز اسکینر</string>
+    <string name="prepare_upload">اپ لوڈ کے لیے تیار کریں</string>
+    <string name="recent">حالیہ</string>
+    <string name="settings">ترتیبات</string>
+    <string name="recent_activity">حالیہ سرگرمی</string>
+    <string name="clear_history">تاریخ صاف کریں</string>
+    <string name="dark_theme">ڈارک تھیم</string>
+    <string name="urdu_language">اردو انٹرفیس</string>
+    <string name="privacy_summary">رازداری: دستاویزات اسی ڈیوائس پر پراسیس ہوتی ہیں۔ حالیہ سرگرمی میں صرف فائل نام، عمل کا نام، تاریخ اور ناپا گیا سائز محفوظ ہوتا ہے۔ ترقیاتی ورژن رضامندی کے عمل کے بعد صرف گوگل کے آزمائشی اشتہارات مانگتا ہے؛ دستاویز کا مواد اشتہاری درخواستوں کے ساتھ کبھی نہیں بھیجا جاتا۔</string>
+    <string name="terms_summary">حدود: پی ڈی ایف اور آفس کی ترتیب مختلف ہو سکتی ہے۔ متن اور جدول نکالنا بہترین ممکنہ کوشش ہے، اسکین شدہ دستاویزات کے لیے او سی آر درکار ہے، اور پہلے سے بہتر فائل مزید چھوٹی نہ بھی ہو سکتی ہے۔</string>
+    <string name="ad_privacy_options">اشتہاری رازداری کے اختیارات</string>
+    <string name="back">واپس</string>
+    <string name="choose_image">تصویر منتخب کریں</string>
+    <string name="select_image">تصویر منتخب کریں</string>
+    <string name="choose_target">مطلوبہ سائز منتخب کریں</string>
+    <string name="quality_value">ابتدائی معیار: %1$d%%</string>
+    <string name="compress_now">اب کم کریں</string>
+    <string name="save_image">تصویر محفوظ کریں</string>
+    <string name="share_image">تصویر شیئر کریں</string>
+    <string name="choose_file">فائل منتخب کریں</string>
+    <string name="choose_pdfs">پی ڈی ایف منتخب کریں</string>
+    <string name="add_images">تصاویر شامل کریں</string>
+    <string name="capture_page">صفحہ کی تصویر لیں</string>
+    <string name="crop_page">منتخب صفحہ تراشیں</string>
+    <string name="apply_crop">تراش لاگو کریں</string>
+    <string name="native_limitations">دستاویز کی تبدیلی اسی ڈیوائس پر ہوتی ہے۔ متن اور جدول کی بازیافت بہترین ممکنہ کوشش ہے؛ اسکین شدہ پی ڈی ایف کے لیے او سی آر درکار ہے اور پیچیدہ آفس ترتیب دوبارہ تیار نہیں ہوتی۔</string>
+    <string name="process_file">فائل تیار کریں</string>
+    <string name="save_output">محفوظ کریں</string>
+    <string name="share_output">شیئر کریں</string>
+    <string name="editable_preview">نکالا گیا قابلِ ترمیم مواد</string>
+    <string name="no_file_selected">کوئی فائل منتخب نہیں</string>
+    <string name="privacy_local">آپ کی فائل اسی ڈیوائس پر پراسیس ہوتی ہے۔</string>
+    <string name="ready">تیار۔</string>
+    <string name="ready_to_compress">کم کرنے کے لیے تیار۔</string>
+    <string name="processing_locally">اسی ڈیوائس پر پراسیسنگ جاری ہے…</string>
+    <string name="compression_failed">تصویر کم نہ ہو سکی۔ نسبتاً چھوٹی تصویر آزمائیں۔</string>
+    <string name="compression_success">تیار · %1$s · %2$d × %3$d پکسل</string>
+    <string name="compression_target_missed">%1$d کلو بائٹ تک محفوظ طور پر نہ پہنچ سکے۔ ناپا گیا نتیجہ: %2$s۔</string>
+    <string name="target_error">10 سے 10240 کلو بائٹ تک ہدف درج کریں۔</string>
+    <string name="custom_kb">حسبِ ضرورت کلو بائٹ</string>
+    <string name="saved_successfully">تصویر کامیابی سے محفوظ ہو گئی۔</string>
+    <string name="invalid_image">یہ فائل معاون JPG، PNG یا WebP تصویر نہیں ہے۔</string>
+    <string name="image_too_large">30 میگا بائٹ سے چھوٹی تصویر منتخب کریں۔</string>
+    <string name="back_symbol">←</string>
+    <string name="more_symbol">›</string>
+    <string name="private_by_design">رازداری ہماری بنیاد ہے</string>
+    <string name="reduce_file_size">فائل سائز کم کریں</string>
+    <string name="compress_explanation">اصل نتیجے کو ناپتے ہوئے JPG، PNG یا WebP کم کریں۔</string>
+    <string name="image_preview_description">منتخب یا کم کی گئی تصویر کا پیش منظر</string>
+    <string name="no_image_selected">کوئی تصویر منتخب نہیں</string>
+    <string name="target_20_kb">20 کلو بائٹ</string>
+    <string name="target_50_kb">50 کلو بائٹ</string>
+    <string name="target_100_kb">100 کلو بائٹ</string>
+    <string name="target_200_kb">200 کلو بائٹ</string>
+    <string name="target_500_kb">500 کلو بائٹ</string>
+    <string name="custom">حسبِ ضرورت</string>
+    <string name="default_target_kb">100</string>
+    <string name="default_max_dimension">600</string>
+    <string name="default_upload_target_kb">200</string>
+    <string name="default_quality">ابتدائی معیار: 82%%</string>
+    <string name="max_width_px">زیادہ سے زیادہ چوڑائی (پکسل)</string>
+    <string name="max_height_px">زیادہ سے زیادہ اونچائی (پکسل)</string>
+    <string name="maximum_size_kb">زیادہ سے زیادہ سائز (کلو بائٹ)</string>
+    <string name="crop_top">اوپر %%</string>
+    <string name="crop_right">دائیں %%</string>
+    <string name="crop_bottom">نیچے %%</string>
+    <string name="crop_left">بائیں %%</string>
+    <string name="recent_metadata_only">صرف معلومات محفوظ ہیں؛ بنائی گئی فائلوں کی نقول فائل فلو محفوظ نہیں رکھتا۔</string>
+    <string name="no_recent_activity">کوئی حالیہ سرگرمی نہیں۔</string>
+    <string name="description_pdf_excel">ترتیب شدہ قابلِ انتخاب متن نکالیں، جدول کا پیش منظر درست کریں، پھر حقیقی XLSX ورک بک بنائیں۔</string>
+    <string name="description_pdf_word">قابلِ انتخاب متن نکال کر قابلِ ترمیم پیش منظر اور درست DOCX بنائیں۔ پیچیدہ ترتیب اور تصاویر دوبارہ تیار نہیں ہوتیں۔</string>
+    <string name="description_word_pdf">قابلِ مطالعہ DOCX پیراگراف نکال کر متن پر مبنی PDF بنائیں۔ محفوظ کرنے سے پہلے پیش منظر دیکھیں۔</string>
+    <string name="description_pdf_compress">PDF کی ساخت مقامی طور پر دوبارہ بنائیں اور ناپا گیا نتیجہ دیکھیں۔ تصویری سلسلے برقرار رہتے ہیں، اس لیے بعض فائلیں چھوٹی نہیں ہوں گی۔</string>
+    <string name="description_pdf_editor">PDF فائلیں ملائیں، تمام صفحات گھمائیں، یا ہر صفحہ الگ PDF بنا کر ZIP میں رکھیں۔</string>
+    <string name="description_image_convert">حقیقی JPG، PNG یا WebP تصویر مقامی طور پر بدلیں۔ JPEG شفاف پکسل سفید کر دیتا ہے۔</string>
+    <string name="description_prepare_upload">تصویر، دستخط یا دستاویز کو ناپے گئے سائز اور زیادہ سے زیادہ ابعاد کے مطابق تیار کریں۔ متعلقہ پورٹل کے موجودہ اصول ضرور دیکھیں۔</string>
+    <string name="description_scanner">50 صفحات تک تصویر لیں، گھمائیں، دستی طور پر تراشیں اور ترتیب دے کر کثیر صفحاتی PDF بنائیں۔ خودکار زاویہ درستگی دستیاب نہیں۔</string>
+    <string name="description_image_pdf">متعدد JPG، PNG یا WebP تصاویر ترتیب دے کر حقیقی کثیر صفحاتی PDF مقامی طور پر بنائیں۔</string>
+    <string name="crop_page_number">صفحہ %1$d تراشیں (ہر کنارے سے 0–45%%)</string>
+    <string name="page_number_rotation">صفحہ %1$d · %2$d°</string>
+    <string name="page_number">صفحہ %1$d</string>
+    <string name="file_saved_successfully">فائل کامیابی سے محفوظ ہو گئی۔</string>
+    <string name="selected_file_size">%1$s · %2$s</string>
+    <string name="selected_files_size">%1$s\n%2$s</string>
+    <string name="image_item">%1$d۔ %2$s</string>
+    <string name="image_item_rotation">%1$d۔ %2$s · %3$d°</string>
+    <string name="recent_item">%1$s\n%2$s · %3$s\n%4$s</string>
+    <string-array name="pdf_editor_actions">
+        <item>صفحات میں ترمیم، ترتیب یا حذف کریں</item>
+        <item>منتخب PDF فائلیں ملائیں</item>
+        <item>تمام صفحات 90° گھمائیں</item>
+        <item>ہر صفحہ الگ PDF بنائیں (ZIP)</item>
+    </string-array>
+    <string-array name="upload_presets">
+        <item>پروفائل تصویر · 600×600 · 200 کلو بائٹ</item>
+        <item>پاسپورٹ تصویر · 413×531 · 100 کلو بائٹ</item>
+        <item>دستخط · 600×200 · 50 کلو بائٹ</item>
+        <item>دستاویز · 1600×2200 · 500 کلو بائٹ</item>
+    </string-array>
+</resources>
