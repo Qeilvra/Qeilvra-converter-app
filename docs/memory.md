@@ -1,9 +1,10 @@
 # Project memory
 
-- The supplied three-phone reference is the visual source of truth.
-- The product name is FileFlow and the tagline is “All your file tools in one place.”
-- Never upload a document silently or fake conversion/compression success.
-- No public deployment or Play publication without explicit owner authorization.
-- Keep tools local where practical and disclose browser limitations before processing.
-- Android application code must remain Java/XML; do not migrate it to Flutter, React Native or Kotlin.
-- The current development host has Node, JDK 21 and Android SDK 36 under `C:\Users\hp\AppData\Local\Android\Sdk`. The official Gradle 9.6 wrapper and Android debug build passed with Build Tools 36.1.0. ADB works outside the sandbox but reports no connected device, and no emulator component is installed.
+- FileFlow uses the supplied blue-and-white glassmorphism reference and keeps mobile controls compact.
+- Never fake conversion/compression success, silently upload a document, or describe a remote operation as local.
+- Local: image tools, scanner, PDF page operations, and recent metadata. Service: PDF/DOCX conversion, PDF compression, and table recognition.
+- Android remains native Java/XML.
+- No Supabase, account system, permanent document database, public document URL, or publication without owner authorization.
+- PDF-to-DOCX baseline is configurable and editable/layout-aware, but `pdf2docx` is unmaintained; commercial engine selection is a release gate, not a hidden limitation.
+- Scanned PDF table extraction requires a separately approved OCR engine and must never invent cells.
+- Development machine: Node 24, JDK 21, Android SDK 36. Android tests compile when allowed to read the installed SDK. Docker CLI exists, but its Linux daemon was not running during verification.

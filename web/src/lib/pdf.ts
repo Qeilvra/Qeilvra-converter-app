@@ -1,6 +1,4 @@
-import { Document, Packer, PageBreak, Paragraph, TextRun } from 'docx';
 import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
 import JSZip from 'jszip';
 import { degrees, PDFDocument } from 'pdf-lib';
 import type { ExtractedTable } from '../types';
@@ -95,61 +93,6 @@ export const tablesToXlsx = async (tables: ExtractedTable[]): Promise<Blob> => {
   return new Blob([output as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 };
 
-export const pdfToDocx = async (file: File): Promise<Blob> => {
-  const pdf = await readPdf(file);
-  try {
-    if (pdf.numPages > 500) throw new Error('This PDF exceeds the 500-page browser processing limit.');
-    const children: Paragraph[] = [];
-    let selectableCharacters = 0;
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const text = content.items.filter((item): item is typeof item & { str: string } => 'str' in item).map((item) => item.str).join(' ').trim();
-      selectableCharacters += text.length;
-      children.push(new Paragraph({ children: [new TextRun({ text: `Page ${pageNumber}`, bold: true, color: '0A1F54', size: 26 })], spacing: { after: 180 } }));
-      if (text) children.push(new Paragraph({ text, spacing: { line: 300 } }));
-      if (pageNumber < pdf.numPages) children.push(new Paragraph({ children: [new PageBreak()] }));
-    }
-    if (selectableCharacters === 0) throw new Error('This PDF contains no selectable text. OCR is required before conversion to Word.');
-    const document = new Document({ sections: [{ children }] });
-    return await Packer.toBlob(document);
-  } finally {
-    await pdf.cleanup();
-  }
-};
-
-export const docxToPdf = async (file: File): Promise<Blob> => {
-  const archive = await JSZip.loadAsync(await file.arrayBuffer());
-  const documentXml = archive.file('word/document.xml');
-  if (!documentXml) throw new Error('This DOCX does not contain a readable main document.');
-  const xml = await documentXml.async('text');
-  if (xml.length > 20_000_000) throw new Error('This Word document expands beyond the safe browser processing limit.');
-  const parsed = new DOMParser().parseFromString(xml, 'application/xml');
-  if (parsed.querySelector('parsererror')) throw new Error('The Word document structure is damaged.');
-  const paragraphs = Array.from(parsed.getElementsByTagNameNS('*', 'p')).map((paragraph) =>
-    Array.from(paragraph.getElementsByTagNameNS('*', 't')).map((node) => node.textContent ?? '').join('')
-  );
-  const extractedText = paragraphs.join('\n').trim();
-  if (!extractedText) throw new Error('No readable text was found in this Word document.');
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
-  const margin = 54;
-  const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-  const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
-  const lines = pdf.splitTextToSize(extractedText, pageWidth) as string[];
-  let y = margin;
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(11);
-  for (const line of lines) {
-    if (y > margin + pageHeight) {
-      pdf.addPage();
-      y = margin;
-    }
-    pdf.text(line, margin, y);
-    y += 15;
-  }
-  return pdf.output('blob');
-};
-
 export const mergePdfs = async (files: File[]): Promise<Blob> => {
   if (files.length < 2) throw new Error('Select at least two PDFs to merge.');
   if (files.length > 20) throw new Error('Merge at most 20 PDFs at once.');
@@ -197,11 +140,4 @@ export const splitPdfToZip = async (file: File): Promise<Blob> => {
 export const getPdfPageCount = async (file: File): Promise<number> => {
   const pdf = await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: false });
   return pdf.getPageCount();
-};
-
-export const compressPdf = async (file: File): Promise<{ blob: Blob; reduced: boolean }> => {
-  const source = await PDFDocument.load(await file.arrayBuffer(), { updateMetadata: false, ignoreEncryption: false });
-  const bytes = await source.save({ useObjectStreams: true, addDefaultPage: false, objectsPerTick: 50 });
-  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
-  return { blob, reduced: blob.size < file.size };
 };

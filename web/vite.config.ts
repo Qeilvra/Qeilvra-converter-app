@@ -5,7 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   test: {
     environment: 'jsdom',
-    setupFiles: './src/test/setup.ts'
+    setupFiles: './src/test/setup.ts',
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**']
   },
   plugins: [
     react(),
@@ -15,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: 'FileFlow — File tools that respect your privacy',
         short_name: 'FileFlow',
-        description: 'Convert, compress, edit and prepare files locally in your browser.',
+        description: 'Local file tools plus secure high-fidelity document conversion.',
         theme_color: '#f2f7ff',
         background_color: '#f2f7ff',
         display: 'standalone',

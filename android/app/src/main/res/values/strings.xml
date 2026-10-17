@@ -21,7 +21,7 @@
     <string name="add_images">Add images</string>
     <string name="crop_page">Crop selected page</string>
     <string name="apply_crop">Apply crop</string>
-    <string name="native_limitations">Document conversions run locally. Text and table recovery is best-effort; scanned PDFs require OCR and complex Office layout is not reproduced.</string>
+    <string name="native_limitations">Lightweight tools run locally. High-fidelity document conversion uses the configured secure temporary service, and each tool identifies its processing path.</string>
     <string name="choose_file">Choose file</string>
     <string name="choose_pdfs">Choose PDFs</string>
     <string name="process_file">Process file</string>
@@ -36,8 +36,8 @@
     <string name="clear_history">Clear history</string>
     <string name="dark_theme">Dark theme</string>
     <string name="urdu_language">Urdu interface</string>
-    <string name="privacy_summary">Privacy: documents are processed locally. Recent activity stores filenames, operation names, dates and measured sizes only. The development build requests only Google test ads after the consent flow; document bytes are never sent with ad requests.</string>
-    <string name="terms_summary">Limitations: PDF and Office layouts differ. Text and table extraction is best-effort, scanned documents require OCR, and already optimized files may not become smaller.</string>
+    <string name="privacy_summary">Privacy: image tools, scanning and PDF page editing run locally. High-fidelity conversion, PDF compression and table recognition send a temporary copy over HTTPS to the configured FileFlow worker, which deletes it after the request. Recent activity stores metadata only.</string>
+    <string name="terms_summary">PDF and Office layouts differ, and unusual fonts or drawing layers can still vary. Scanned table extraction requires approved OCR. Already optimized files may not become smaller.</string>
     <string name="ad_privacy_options">Ad privacy options</string>
     <string name="back">Back</string>
     <string name="select_image">Select image</string>
@@ -84,14 +84,16 @@
     <string name="crop_left">Left %%</string>
     <string name="recent_metadata_only">Metadata only; generated file copies are not retained by FileFlow.</string>
     <string name="no_recent_activity">No recent activity.</string>
-    <string name="description_pdf_excel">Extract aligned selectable text, edit the tabular preview, then export a real XLSX workbook.</string>
-    <string name="description_pdf_word">Extract selectable text to an editable preview and create a valid DOCX. Complex layout and images are not reproduced.</string>
-    <string name="description_word_pdf">Extract readable DOCX paragraphs and create a text-focused PDF. Review the preview before saving.</string>
-    <string name="description_pdf_compress">Rebuild the PDF structure locally and report the measured result. Image streams are preserved, so some files will not shrink.</string>
+    <string name="description_pdf_excel">Recognize table rows and columns, edit the preview, then export an XLSX workbook.</string>
+    <string name="description_pdf_word">Create an editable DOCX with the configured layout-aware conversion engine.</string>
+    <string name="description_word_pdf">Render DOCX pages with LibreOffice to preserve document design and pagination.</string>
+    <string name="description_pdf_compress">Recompress embedded images and optimize PDF structure without rasterizing text pages.</string>
     <string name="description_pdf_editor">Merge PDFs, rotate every page, or split a PDF into individual files in a ZIP archive.</string>
     <string name="description_image_convert">Convert a real JPG, PNG or WebP image locally. JPEG replaces transparent pixels with white.</string>
     <string name="description_prepare_upload">Prepare a photo, signature or document to measured size and maximum dimensions. Verify the destination portal’s current rules.</string>
-    <string name="description_scanner">Capture, rotate, manually crop and arrange up to 50 pages, then create a multipage PDF. Photograph pages squarely; automatic perspective correction is not available.</string>
+    <string name="description_scanner">Capture, detect document edges, correct perspective, enhance and arrange up to 50 pages.</string>
+    <string name="privacy_secure_service">This document is transferred over HTTPS to the configured FileFlow service and deleted after the request.</string>
+    <string name="privacy_local_pdf">Processed locally on this device. No document bytes are uploaded.</string>
     <string name="description_image_pdf">Arrange multiple JPG, PNG or WebP images and create a real multipage PDF locally.</string>
     <string name="crop_page_number">Crop page %1$d (0–45%% per edge)</string>
     <string name="page_number_rotation">Page %1$d · %2$d°</string>
@@ -107,6 +109,11 @@
         <item>Merge selected PDFs</item>
         <item>Rotate every page 90°</item>
         <item>Split into individual PDFs (ZIP)</item>
+    </string-array>
+    <string-array name="compression_levels">
+        <item>Highest quality</item>
+        <item>Balanced</item>
+        <item>Smallest file</item>
     </string-array>
     <string-array name="upload_presets">
         <item>Profile photo · 600×600 · 200 KB</item>

@@ -26,6 +26,6 @@
             <com.google.android.material.button.MaterialButton android:id="@+id/buttonSave" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:text="@string/save_output" android:textAllCaps="false" app:cornerRadius="15dp" />
             <com.google.android.material.button.MaterialButton android:id="@+id/buttonShare" android:layout_width="0dp" android:layout_height="52dp" android:layout_marginStart="8dp" android:layout_weight="1" android:text="@string/share_output" android:textAllCaps="false" app:cornerRadius="15dp" />
         </LinearLayout>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:background="@drawable/bg_upload" android:gravity="center" android:padding="14dp" android:text="@string/privacy_local" android:textColor="@color/secondary_text" android:textSize="11sp" />
+        <TextView android:id="@+id/textPrivacy" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:background="@drawable/bg_upload" android:gravity="center" android:padding="14dp" android:text="@string/privacy_local_pdf" android:textColor="@color/secondary_text" android:textSize="11sp" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

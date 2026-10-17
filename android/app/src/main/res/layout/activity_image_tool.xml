@@ -21,10 +21,10 @@
         <LinearLayout android:id="@+id/cropControls" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_upload" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
             <TextView android:id="@+id/textCropTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/crop_page" android:textColor="@color/navy" android:textStyle="bold" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
-                <EditText android:id="@+id/inputCropTop" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_top" android:importantForAutofill="no" android:inputType="number" />
-                <EditText android:id="@+id/inputCropRight" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_right" android:importantForAutofill="no" android:inputType="number" />
-                <EditText android:id="@+id/inputCropBottom" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_bottom" android:importantForAutofill="no" android:inputType="number" />
-                <EditText android:id="@+id/inputCropLeft" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_left" android:importantForAutofill="no" android:inputType="number" />
+                <EditText android:id="@+id/inputCropTop" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_top" android:importantForAutofill="no" android:inputType="text" />
+                <EditText android:id="@+id/inputCropRight" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_right" android:importantForAutofill="no" android:inputType="text" />
+                <EditText android:id="@+id/inputCropBottom" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_bottom" android:importantForAutofill="no" android:inputType="text" />
+                <EditText android:id="@+id/inputCropLeft" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="@string/crop_left" android:importantForAutofill="no" android:inputType="text" />
             </LinearLayout>
             <com.google.android.material.button.MaterialButton android:id="@+id/buttonApplyCrop" android:layout_width="match_parent" android:layout_height="48dp" android:text="@string/apply_crop" android:textAllCaps="false" />
         </LinearLayout>

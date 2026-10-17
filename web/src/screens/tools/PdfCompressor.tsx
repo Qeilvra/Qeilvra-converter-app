@@ -5,26 +5,29 @@ import { ResultCard } from '../../components/ResultCard';
 import { StatusBanner } from '../../components/StatusBanner';
 import type { ToolDefinition } from '../../data/tools';
 import { addHistory, formatBytes, safeBaseName, validateFile } from '../../lib/files';
-import { compressPdf } from '../../lib/pdf';
+import { compressPdfRemote, processingApiDescription, type CompressionLevel, type PdfCompressionResult } from '../../lib/processingApi';
 import type { ProcessingState } from '../../types';
 import { ToolLayout } from './ToolLayout';
 
 export function PdfCompressor({ tool }: { tool: ToolDefinition }) {
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<{ blob: Blob; reduced: boolean } | null>(null);
+  const [result, setResult] = useState<PdfCompressionResult | null>(null);
+  const [level, setLevel] = useState<CompressionLevel>('BALANCED');
   const [state, setState] = useState<ProcessingState>('idle');
   const [error, setError] = useState('');
   const run = async () => {
     if (!file) return;
     setState('processing'); setResult(null);
-    try { const output = await compressPdf(file); setResult(output); setState('success'); addHistory({ operation: 'PDF compression', sourceName: file.name, outputName: `${safeBaseName(file.name)}-optimized.pdf`, outputSize: output.blob.size }, output.blob); }
+    try { const output = await compressPdfRemote(file, level); setResult(output); setState('success'); if (output.reduced) addHistory({ operation: 'PDF compression', sourceName: file.name, outputName: `${safeBaseName(file.name)}-compressed.pdf`, outputSize: output.blob.size }, output.blob); }
     catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'PDF optimization failed.'); }
   };
-  return <ToolLayout tool={tool} note="Rebuild PDF structure with object streams without rasterizing pages.">
-    <div className="limitation-card"><strong>Lossless structural optimization</strong><p>Browser processing preserves page content, fonts and forms where possible. Image-heavy PDFs usually need image recompression, which this safe local pass does not attempt.</p></div>
+  const reduction = result && file ? Math.max(0, Math.round((1 - result.blob.size / file.size) * 100)) : 0;
+  return <ToolLayout tool={tool} mode="service" note="Downsample and recompress embedded images while preserving selectable text and page content.">
+    <div className="engine-strip"><span className="engine-strip__dot" /><div><strong>Secure PDF worker</strong><small>{processingApiDescription}</small></div></div>
     <FileDropzone accept={tool.accept} file={file} label="Select a PDF" hint="Unencrypted PDF · up to 50 MB" onFiles={(files) => void (async () => { try { await validateFile(files[0], ['pdf']); setFile(files[0]); setResult(null); setState('idle'); } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Invalid PDF.'); } })()} />
-    {file && <button className="button button--primary button--full tool-action" onClick={() => void run()}><Archive size={19} /> Optimize PDF</button>}
-    <StatusBanner state={state} error={error} />
-    {result && file && <ResultCard blob={result.blob} filename={`${safeBaseName(file.name)}-optimized.pdf`} warning={result.reduced ? `Reduced from ${formatBytes(file.size)} to ${formatBytes(result.blob.size)}.` : `This PDF is already structurally optimized. The measured output (${formatBytes(result.blob.size)}) is not smaller than the original.`} />}
+    {file && <section className="control-card"><div className="segmented-control">{([['LOW', 'Highest quality'], ['BALANCED', 'Balanced'], ['HIGH', 'Smallest file']] as const).map(([value, label]) => <button key={value} className={level === value ? 'active' : ''} onClick={() => setLevel(value)}><span>{label}</span></button>)}</div><button className="button button--primary button--full tool-action" onClick={() => void run()}><Archive size={19} /> Compress PDF</button></section>}
+    <StatusBanner state={state} error={error} mode="service" />
+    {result && file && result.reduced && <ResultCard blob={result.blob} filename={`${safeBaseName(file.name)}-compressed.pdf`} warning={`${formatBytes(file.size)} → ${formatBytes(result.blob.size)} · ${reduction}% smaller · ${result.imagesOptimized} embedded image${result.imagesOptimized === 1 ? '' : 's'} optimized.`} />}
+    {result && file && !result.reduced && <div className="status-banner status-banner--warning"><span><strong>No safe reduction found</strong>The optimized result was not smaller, so FileFlow kept your original instead of claiming a reduction.</span></div>}
   </ToolLayout>;
 }

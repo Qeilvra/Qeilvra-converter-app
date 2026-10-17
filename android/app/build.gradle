@@ -4,6 +4,7 @@ plugins {
 
 def releaseSigningConfigured = ['FILEFLOW_KEYSTORE_PATH', 'FILEFLOW_KEYSTORE_PASSWORD', 'FILEFLOW_KEY_ALIAS', 'FILEFLOW_KEY_PASSWORD']
         .every { System.getenv(it) }
+def processingApiUrl = providers.gradleProperty('fileflowProcessingApiUrl').orElse(System.getenv('FILEFLOW_PROCESSING_API_URL') ?: '').get()
 
 android {
     namespace 'com.fileflow.app'
@@ -17,6 +18,7 @@ android {
         versionCode 1
         versionName '0.1.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        buildConfigField 'String', 'PROCESSING_API_URL', '"' + processingApiUrl.replace('\\', '\\\\').replace('"', '\\"') + '"'
     }
 
     signingConfigs {
@@ -43,6 +45,7 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    buildFeatures { buildConfig true }
 }
 
 dependencies {

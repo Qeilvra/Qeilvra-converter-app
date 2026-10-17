@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -26,6 +28,10 @@ public final class BitmapProcessor {
         public int cropRight;
         public int cropBottom;
         public int cropLeft;
+        public boolean perspective;
+        public float topLeftX = 4, topLeftY = 4, topRightX = 96, topRightY = 4;
+        public float bottomRightX = 96, bottomRightY = 96, bottomLeftX = 4, bottomLeftY = 96;
+        public int scanFilter;
         public ImageEdit(@NonNull Uri uri) { this.uri = uri; }
     }
 
@@ -95,8 +101,40 @@ public final class BitmapProcessor {
         return decode(resolver, uri, 160);
     }
 
+    @NonNull
+    public static float[] detectDocumentCorners(@NonNull ContentResolver resolver, @NonNull Uri uri) throws IOException {
+        Bitmap bitmap = decode(resolver, uri, 900);
+        try {
+            int width = bitmap.getWidth(), height = bitmap.getHeight();
+            int[] pixels = new int[width * height]; bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+            float[] gray = new float[pixels.length];
+            for (int index = 0; index < pixels.length; index++) gray[index] = Color.red(pixels[index]) * .299f + Color.green(pixels[index]) * .587f + Color.blue(pixels[index]) * .114f;
+            double sum = 0, squared = 0; int samples = 0;
+            float[] edges = new float[pixels.length];
+            for (int y = 1; y < height - 1; y++) for (int x = 1; x < width - 1; x++) {
+                int i = y * width + x;
+                float gx = -gray[i-width-1] + gray[i-width+1] - 2*gray[i-1] + 2*gray[i+1] - gray[i+width-1] + gray[i+width+1];
+                float gy = -gray[i-width-1] - 2*gray[i-width] - gray[i-width+1] + gray[i+width-1] + 2*gray[i+width] + gray[i+width+1];
+                float value = (float) Math.hypot(gx, gy); edges[i] = value; sum += value; squared += value * value; samples++;
+            }
+            double mean = sum / Math.max(1, samples); double threshold = mean + 1.2 * Math.sqrt(Math.max(0, squared / Math.max(1, samples) - mean * mean));
+            float[] result = {4,4,96,4,96,96,4,96};
+            double minSum = Double.MAX_VALUE, maxSum = -Double.MAX_VALUE, maxDiff = -Double.MAX_VALUE, minDiff = Double.MAX_VALUE; int strong = 0;
+            for (int y = Math.max(1, height/40); y < height-height/40; y++) for (int x = Math.max(1, width/40); x < width-width/40; x++) {
+                if (edges[y*width+x] < threshold) continue; strong++;
+                double sumScore=x+y, diff=x-y;
+                if (sumScore < minSum) { minSum=sumScore; result[0]=x*100f/width; result[1]=y*100f/height; }
+                if (diff > maxDiff) { maxDiff=diff; result[2]=x*100f/width; result[3]=y*100f/height; }
+                if (sumScore > maxSum) { maxSum=sumScore; result[4]=x*100f/width; result[5]=y*100f/height; }
+                if (diff < minDiff) { minDiff=diff; result[6]=x*100f/width; result[7]=y*100f/height; }
+            }
+            return strong < Math.max(80, width*height/500) ? new float[] {4,4,96,4,96,96,4,96} : result;
+        } finally { bitmap.recycle(); }
+    }
+
     private static Bitmap render(ContentResolver resolver, ImageEdit edit, int maxLongEdge) throws IOException {
         Bitmap source = decode(resolver, edit.uri, maxLongEdge);
+        if (edit.perspective) source = perspective(source, edit);
         int left = Math.round(source.getWidth() * clamp(edit.cropLeft) / 100f);
         int right = Math.round(source.getWidth() * clamp(edit.cropRight) / 100f);
         int top = Math.round(source.getHeight() * clamp(edit.cropTop) / 100f);
@@ -105,6 +143,11 @@ public final class BitmapProcessor {
         int height = Math.max(1, source.getHeight() - top - bottom);
         Bitmap cropped = Bitmap.createBitmap(source, left, top, width, height);
         if (cropped != source) source.recycle();
+        if (edit.scanFilter != 0) {
+            Bitmap enhanced = enhance(cropped, edit.scanFilter);
+            if (enhanced != cropped) cropped.recycle();
+            cropped = enhanced;
+        }
         if (edit.rotation % 360 == 0) return cropped;
         Matrix matrix = new Matrix();
         matrix.setRotate(edit.rotation % 360);
@@ -165,6 +208,26 @@ public final class BitmapProcessor {
         canvas.drawColor(Color.WHITE);
         canvas.drawBitmap(source, 0, 0, null);
         return output;
+    }
+
+    private static Bitmap perspective(Bitmap source, ImageEdit edit) throws IOException {
+        float[] src = {source.getWidth()*edit.topLeftX/100f, source.getHeight()*edit.topLeftY/100f, source.getWidth()*edit.topRightX/100f, source.getHeight()*edit.topRightY/100f, source.getWidth()*edit.bottomRightX/100f, source.getHeight()*edit.bottomRightY/100f, source.getWidth()*edit.bottomLeftX/100f, source.getHeight()*edit.bottomLeftY/100f};
+        int width = Math.round(Math.max((float)Math.hypot(src[2]-src[0], src[3]-src[1]), (float)Math.hypot(src[4]-src[6], src[5]-src[7])));
+        int height = Math.round(Math.max((float)Math.hypot(src[6]-src[0], src[7]-src[1]), (float)Math.hypot(src[4]-src[2], src[5]-src[3])));
+        if (width < 20 || height < 20) throw new IOException("The four document corners do not form a valid page.");
+        float[] dst = {0,0,width,0,width,height,0,height}; Matrix matrix = new Matrix();
+        if (!matrix.setPolyToPoly(src, 0, dst, 0, 4)) throw new IOException("Perspective correction failed for this page.");
+        Bitmap output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); Canvas canvas = new Canvas(output); canvas.drawColor(Color.WHITE); canvas.drawBitmap(source, matrix, new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG)); source.recycle(); return output;
+    }
+
+    private static Bitmap enhance(Bitmap source, int filter) {
+        Bitmap output = Bitmap.createBitmap(source.getWidth(), source.getHeight(), Bitmap.Config.ARGB_8888);
+        if (filter == 1) {
+            ColorMatrix matrix = new ColorMatrix(); matrix.setSaturation(0); Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG); paint.setColorFilter(new ColorMatrixColorFilter(matrix)); new Canvas(output).drawBitmap(source, 0, 0, paint); return output;
+        }
+        int[] pixels = new int[source.getWidth()*source.getHeight()]; source.getPixels(pixels,0,source.getWidth(),0,0,source.getWidth(),source.getHeight());
+        for (int i=0;i<pixels.length;i++) { int gray=Math.round(Color.red(pixels[i])*.299f+Color.green(pixels[i])*.587f+Color.blue(pixels[i])*.114f); int value=gray>155?255:0; pixels[i]=Color.rgb(value,value,value); }
+        output.setPixels(pixels,0,source.getWidth(),0,0,source.getWidth(),source.getHeight()); return output;
     }
 
     private static int clamp(int value) { return Math.max(0, Math.min(45, value)); }

@@ -3,7 +3,7 @@ import type { ToolDefinition } from '../../data/tools';
 import { PageHeader } from '../../components/PageHeader';
 import { PrivacyStrip } from '../../components/StatusBanner';
 
-export function ToolLayout({ tool, children, note }: { tool: ToolDefinition; children: ReactNode; note?: string }) {
+export function ToolLayout({ tool, children, note, mode = 'local' }: { tool: ToolDefinition; children: ReactNode; note?: string; mode?: 'local' | 'service' }) {
   const { Icon } = tool;
   return (
     <div className="page page--tool">
@@ -13,7 +13,7 @@ export function ToolLayout({ tool, children, note }: { tool: ToolDefinition; chi
         <div><h2>{tool.name}</h2><p>{note ?? tool.description}</p></div>
       </section>
       {children}
-      <PrivacyStrip />
+      <PrivacyStrip mode={mode} />
     </div>
   );
 }

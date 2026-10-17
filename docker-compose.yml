@@ -1,0 +1,19 @@
+services:
+  processing:
+    build: ./server
+    read_only: true
+    tmpfs:
+      - /tmp:size=768m,mode=1777
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      FILEFLOW_ALLOWED_ORIGINS: http://localhost:5173
+      FILEFLOW_WORKER_CONCURRENCY: "2"
+    mem_limit: 1536m
+    cpus: 2.0
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped

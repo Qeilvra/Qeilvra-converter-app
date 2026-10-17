@@ -23,8 +23,8 @@
     <string name="clear_history">تاریخ صاف کریں</string>
     <string name="dark_theme">ڈارک تھیم</string>
     <string name="urdu_language">اردو انٹرفیس</string>
-    <string name="privacy_summary">رازداری: دستاویزات اسی ڈیوائس پر پراسیس ہوتی ہیں۔ حالیہ سرگرمی میں صرف فائل نام، عمل کا نام، تاریخ اور ناپا گیا سائز محفوظ ہوتا ہے۔ ترقیاتی ورژن رضامندی کے عمل کے بعد صرف گوگل کے آزمائشی اشتہارات مانگتا ہے؛ دستاویز کا مواد اشتہاری درخواستوں کے ساتھ کبھی نہیں بھیجا جاتا۔</string>
-    <string name="terms_summary">حدود: پی ڈی ایف اور آفس کی ترتیب مختلف ہو سکتی ہے۔ متن اور جدول نکالنا بہترین ممکنہ کوشش ہے، اسکین شدہ دستاویزات کے لیے او سی آر درکار ہے، اور پہلے سے بہتر فائل مزید چھوٹی نہ بھی ہو سکتی ہے۔</string>
+    <string name="privacy_summary">رازداری: تصویری اوزار، اسکینر اور PDF صفحہ تدوین ڈیوائس پر ہوتی ہے۔ اعلیٰ معیار کی تبدیلی، PDF کمپریشن اور جدول شناخت HTTPS کے ذریعے FileFlow سروس کو عارضی نقل بھیجتی ہے، جو درخواست کے بعد حذف ہو جاتی ہے۔ حالیہ سرگرمی صرف میٹا ڈیٹا محفوظ کرتی ہے۔</string>
+    <string name="terms_summary">PDF اور آفس کی ترتیب مختلف ہو سکتی ہے، اور غیر معمولی فونٹس یا گرافکس میں فرق رہ سکتا ہے۔ اسکین شدہ جدول کے لیے منظور شدہ OCR درکار ہے۔ پہلے سے بہتر فائل مزید چھوٹی نہ بھی ہو سکتی ہے۔</string>
     <string name="ad_privacy_options">اشتہاری رازداری کے اختیارات</string>
     <string name="back">واپس</string>
     <string name="choose_image">تصویر منتخب کریں</string>
@@ -40,7 +40,7 @@
     <string name="capture_page">صفحہ کی تصویر لیں</string>
     <string name="crop_page">منتخب صفحہ تراشیں</string>
     <string name="apply_crop">تراش لاگو کریں</string>
-    <string name="native_limitations">دستاویز کی تبدیلی اسی ڈیوائس پر ہوتی ہے۔ متن اور جدول کی بازیافت بہترین ممکنہ کوشش ہے؛ اسکین شدہ پی ڈی ایف کے لیے او سی آر درکار ہے اور پیچیدہ آفس ترتیب دوبارہ تیار نہیں ہوتی۔</string>
+    <string name="native_limitations">ہلکے اوزار مقامی طور پر چلتے ہیں۔ اعلیٰ معیار کی دستاویزی تبدیلی محفوظ عارضی سروس استعمال کرتی ہے، اور ہر ٹول اپنا پراسیسنگ طریقہ واضح کرتا ہے۔</string>
     <string name="process_file">فائل تیار کریں</string>
     <string name="save_output">محفوظ کریں</string>
     <string name="share_output">شیئر کریں</string>
@@ -84,14 +84,16 @@
     <string name="crop_left">بائیں %%</string>
     <string name="recent_metadata_only">صرف معلومات محفوظ ہیں؛ بنائی گئی فائلوں کی نقول فائل فلو محفوظ نہیں رکھتا۔</string>
     <string name="no_recent_activity">کوئی حالیہ سرگرمی نہیں۔</string>
-    <string name="description_pdf_excel">ترتیب شدہ قابلِ انتخاب متن نکالیں، جدول کا پیش منظر درست کریں، پھر حقیقی XLSX ورک بک بنائیں۔</string>
-    <string name="description_pdf_word">قابلِ انتخاب متن نکال کر قابلِ ترمیم پیش منظر اور درست DOCX بنائیں۔ پیچیدہ ترتیب اور تصاویر دوبارہ تیار نہیں ہوتیں۔</string>
-    <string name="description_word_pdf">قابلِ مطالعہ DOCX پیراگراف نکال کر متن پر مبنی PDF بنائیں۔ محفوظ کرنے سے پہلے پیش منظر دیکھیں۔</string>
-    <string name="description_pdf_compress">PDF کی ساخت مقامی طور پر دوبارہ بنائیں اور ناپا گیا نتیجہ دیکھیں۔ تصویری سلسلے برقرار رہتے ہیں، اس لیے بعض فائلیں چھوٹی نہیں ہوں گی۔</string>
+    <string name="description_pdf_excel">جدول کی قطاریں اور کالم شناخت کریں، قابلِ ترمیم پیش منظر درست کریں، پھر حقیقی XLSX ورک بک بنائیں۔</string>
+    <string name="description_pdf_word">ترتیب سے باخبر انجن کے ذریعے قابلِ ترمیم DOCX بنائیں۔</string>
+    <string name="description_word_pdf">ڈیزائن اور صفحہ بندی برقرار رکھنے کے لیے LibreOffice سے DOCX صفحات رینڈر کریں۔</string>
+    <string name="description_pdf_compress">قابلِ انتخاب متن برقرار رکھتے ہوئے شامل تصاویر دوبارہ کمپریس کریں اور PDF ساخت بہتر بنائیں۔</string>
     <string name="description_pdf_editor">PDF فائلیں ملائیں، تمام صفحات گھمائیں، یا ہر صفحہ الگ PDF بنا کر ZIP میں رکھیں۔</string>
     <string name="description_image_convert">حقیقی JPG، PNG یا WebP تصویر مقامی طور پر بدلیں۔ JPEG شفاف پکسل سفید کر دیتا ہے۔</string>
     <string name="description_prepare_upload">تصویر، دستخط یا دستاویز کو ناپے گئے سائز اور زیادہ سے زیادہ ابعاد کے مطابق تیار کریں۔ متعلقہ پورٹل کے موجودہ اصول ضرور دیکھیں۔</string>
-    <string name="description_scanner">50 صفحات تک تصویر لیں، گھمائیں، دستی طور پر تراشیں اور ترتیب دے کر کثیر صفحاتی PDF بنائیں۔ خودکار زاویہ درستگی دستیاب نہیں۔</string>
+    <string name="description_scanner">تصویر لیں، کنارے خودکار شناخت کریں، چار کونے درست کریں، بہتر بنائیں اور 50 صفحات تک ترتیب دیں۔</string>
+    <string name="privacy_secure_service">یہ دستاویز HTTPS کے ذریعے مقررہ FileFlow سروس کو بھیجی جاتی ہے اور درخواست کے بعد عارضی نقل حذف ہو جاتی ہے۔</string>
+    <string name="privacy_local_pdf">یہ عمل اسی ڈیوائس پر ہوتا ہے۔ دستاویز اپ لوڈ نہیں کی جاتی۔</string>
     <string name="description_image_pdf">متعدد JPG، PNG یا WebP تصاویر ترتیب دے کر حقیقی کثیر صفحاتی PDF مقامی طور پر بنائیں۔</string>
     <string name="crop_page_number">صفحہ %1$d تراشیں (ہر کنارے سے 0–45%%)</string>
     <string name="page_number_rotation">صفحہ %1$d · %2$d°</string>
@@ -107,6 +109,11 @@
         <item>منتخب PDF فائلیں ملائیں</item>
         <item>تمام صفحات 90° گھمائیں</item>
         <item>ہر صفحہ الگ PDF بنائیں (ZIP)</item>
+    </string-array>
+    <string-array name="compression_levels">
+        <item>اعلیٰ ترین معیار</item>
+        <item>متوازن</item>
+        <item>سب سے چھوٹی فائل</item>
     </string-array>
     <string-array name="upload_presets">
         <item>پروفائل تصویر · 600×600 · 200 کلو بائٹ</item>

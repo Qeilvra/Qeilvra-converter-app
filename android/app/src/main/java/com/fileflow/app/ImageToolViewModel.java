@@ -61,6 +61,7 @@ public final class ImageToolViewModel extends AndroidViewModel {
                     mime = "image/jpeg";
                     if (!result.reachedTarget) resultMessage = "Target not reached; measured output is " + formatBytes(bytes.length) + ".";
                 } else {
+                    if ("scanner".equals(tool)) for (Item item : items) item.scanFilter = option;
                     bytes = BitmapProcessor.imagesToPdf(getApplication().getContentResolver(), new ArrayList<>(items));
                     name = "scanner".equals(tool) ? "fileflow-scan.pdf" : "images.pdf";
                     mime = "application/pdf";

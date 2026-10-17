@@ -71,6 +71,7 @@ public final class DocumentToolActivity extends AppCompatActivity {
         resultActions = findViewById(R.id.resultActions);
         pageContainer = findViewById(R.id.pageContainer);
         configure(title, description);
+        ((TextView) findViewById(R.id.textPrivacy)).setText(usesRemoteService() ? R.string.privacy_secure_service : R.string.privacy_local_pdf);
 
         findViewById(R.id.buttonBack).setOnClickListener(view -> finish());
         findViewById(R.id.buttonChoose).setOnClickListener(view -> choose());
@@ -86,7 +87,12 @@ public final class DocumentToolActivity extends AppCompatActivity {
             case "pdf-excel": title.setText(R.string.pdf_to_excel); description.setText(R.string.description_pdf_excel); break;
             case "pdf-word": title.setText(R.string.pdf_to_word); description.setText(R.string.description_pdf_word); break;
             case "word-pdf": title.setText(R.string.word_to_pdf); description.setText(R.string.description_word_pdf); break;
-            case "pdf-compress": title.setText(R.string.pdf_compressor); description.setText(R.string.description_pdf_compress); break;
+            case "pdf-compress":
+                title.setText(R.string.pdf_compressor); description.setText(R.string.description_pdf_compress);
+                actionSpinner.setVisibility(View.VISIBLE);
+                actionSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, getResources().getStringArray(R.array.compression_levels)));
+                actionSpinner.setSelection(1);
+                break;
             case "pdf-editor":
                 title.setText(R.string.pdf_editor); description.setText(R.string.description_pdf_editor);
                 actionSpinner.setVisibility(View.VISIBLE);
@@ -227,7 +233,8 @@ public final class DocumentToolActivity extends AppCompatActivity {
         return new Metadata(name, size);
     }
 
-    private boolean needsPreview() { return "pdf-excel".equals(tool) || "pdf-word".equals(tool) || "word-pdf".equals(tool); }
+    private boolean needsPreview() { return "pdf-excel".equals(tool); }
+    private boolean usesRemoteService() { return "pdf-excel".equals(tool) || "pdf-word".equals(tool) || "word-pdf".equals(tool) || "pdf-compress".equals(tool); }
     private static boolean isKnownTool(String value) { return "pdf-excel".equals(value) || "pdf-word".equals(value) || "word-pdf".equals(value) || "pdf-compress".equals(value) || "pdf-editor".equals(value); }
     private static String formatBytes(long bytes) { if (bytes < 1024) return bytes + " B"; if (bytes < 1024 * 1024) return String.format(Locale.getDefault(), "%.1f KB", bytes / 1024f); return String.format(Locale.getDefault(), "%.1f MB", bytes / (1024f * 1024f)); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

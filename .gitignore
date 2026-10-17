@@ -3,6 +3,8 @@ dist/
 .npm-cache/
 .gradle-cache/
 .android-home/
+.tools/
+.m2-cache/
 .gradle/
 local.properties
 *.iml
@@ -10,5 +12,6 @@ local.properties
 .DS_Store
 *.log
 build/
+target/
 test-results/
 web/test-results/

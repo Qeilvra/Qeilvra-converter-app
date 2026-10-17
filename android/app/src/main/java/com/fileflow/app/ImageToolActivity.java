@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
+import com.fileflow.app.processing.BitmapProcessor;
 import com.fileflow.app.processing.FileValidator;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -108,7 +109,8 @@ public final class ImageToolActivity extends AppCompatActivity {
             });
         } else if ("scanner".equals(tool)) {
             title.setText(R.string.document_scanner); description.setText(R.string.description_scanner);
-            camera.setVisibility(View.VISIBLE);
+            camera.setVisibility(View.VISIBLE); option.setVisibility(View.VISIBLE);
+            option.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[] {"Enhanced color", "Grayscale", "Black & white"}));
         } else {
             title.setText(R.string.image_to_pdf); description.setText(R.string.description_image_pdf);
         }
@@ -138,7 +140,14 @@ public final class ImageToolActivity extends AppCompatActivity {
             for (Uri uri : uris) {
                 FileValidator.validateImage(getContentResolver(), uri, 30L * 1024L * 1024L);
                 try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
-                model.items.add(new ImageToolViewModel.Item(uri, displayName(uri)));
+                ImageToolViewModel.Item item = new ImageToolViewModel.Item(uri, displayName(uri));
+                if ("scanner".equals(tool)) {
+                    float[] corners = BitmapProcessor.detectDocumentCorners(getContentResolver(), uri);
+                    item.perspective = true;
+                    item.topLeftX=corners[0]; item.topLeftY=corners[1]; item.topRightX=corners[2]; item.topRightY=corners[3];
+                    item.bottomRightX=corners[4]; item.bottomRightY=corners[5]; item.bottomLeftX=corners[6]; item.bottomLeftY=corners[7];
+                }
+                model.items.add(item);
             }
             model.changed(); cropIndex = -1; cropControls.setVisibility(View.GONE); renderItems();
         } catch (Exception error) { status.setText(error.getMessage() == null ? "Unsupported image." : error.getMessage()); }
@@ -178,14 +187,22 @@ public final class ImageToolActivity extends AppCompatActivity {
 
     private void editCrop(int index) {
         cropIndex = index; ImageToolViewModel.Item item = model.items.get(index);
-        cropTop.setText(String.valueOf(item.cropTop)); cropRight.setText(String.valueOf(item.cropRight)); cropBottom.setText(String.valueOf(item.cropBottom)); cropLeft.setText(String.valueOf(item.cropLeft));
+        if ("scanner".equals(tool)) {
+            cropTop.setHint("Top left x,y"); cropRight.setHint("Top right x,y"); cropBottom.setHint("Bottom right x,y"); cropLeft.setHint("Bottom left x,y");
+            cropTop.setText(point(item.topLeftX,item.topLeftY)); cropRight.setText(point(item.topRightX,item.topRightY)); cropBottom.setText(point(item.bottomRightX,item.bottomRightY)); cropLeft.setText(point(item.bottomLeftX,item.bottomLeftY));
+        } else {
+            cropTop.setText(String.valueOf(item.cropTop)); cropRight.setText(String.valueOf(item.cropRight)); cropBottom.setText(String.valueOf(item.cropBottom)); cropLeft.setText(String.valueOf(item.cropLeft));
+        }
         ((TextView) findViewById(R.id.textCropTitle)).setText(getString(R.string.crop_page_number, index + 1)); cropControls.setVisibility(View.VISIBLE);
     }
 
     private void applyCrop() {
         if (cropIndex < 0 || cropIndex >= model.items.size()) return;
         ImageToolViewModel.Item item = model.items.get(cropIndex);
-        item.cropTop = crop(cropTop); item.cropRight = crop(cropRight); item.cropBottom = crop(cropBottom); item.cropLeft = crop(cropLeft);
+        if ("scanner".equals(tool)) {
+            float[] tl=point(cropTop,item.topLeftX,item.topLeftY), tr=point(cropRight,item.topRightX,item.topRightY), br=point(cropBottom,item.bottomRightX,item.bottomRightY), bl=point(cropLeft,item.bottomLeftX,item.bottomLeftY);
+            item.topLeftX=tl[0]; item.topLeftY=tl[1]; item.topRightX=tr[0]; item.topRightY=tr[1]; item.bottomRightX=br[0]; item.bottomRightY=br[1]; item.bottomLeftX=bl[0]; item.bottomLeftY=bl[1]; item.perspective=true;
+        } else { item.cropTop = crop(cropTop); item.cropRight = crop(cropRight); item.cropBottom = crop(cropBottom); item.cropLeft = crop(cropLeft); }
         model.changed(); cropControls.setVisibility(View.GONE); cropIndex = -1; renderItems();
     }
 
@@ -222,6 +239,8 @@ public final class ImageToolActivity extends AppCompatActivity {
 
     private static int number(TextInputEditText input, int fallback) { try { return Integer.parseInt(input.getText() == null ? "" : input.getText().toString()); } catch (NumberFormatException ignored) { return fallback; } }
     private static int crop(EditText input) { try { return Math.max(0, Math.min(45, Integer.parseInt(input.getText().toString()))); } catch (Exception ignored) { return 0; } }
+    private static String point(float x,float y) { return Math.round(x)+","+Math.round(y); }
+    private static float[] point(EditText input,float fallbackX,float fallbackY) { try { String[] values=input.getText().toString().split(","); return new float[] {Math.max(0,Math.min(100,Float.parseFloat(values[0].trim()))),Math.max(0,Math.min(100,Float.parseFloat(values[1].trim())))}; } catch(Exception ignored) { return new float[] {fallbackX,fallbackY}; } }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private static boolean isKnown(@Nullable String value) { return "image-convert".equals(value) || "image-pdf".equals(value) || "scanner".equals(value) || "prepare-upload".equals(value); }
 }
