@@ -1,12 +1,12 @@
 package com.fileflow.server.api;
 
-import com.fileflow.server.config.ProcessingProperties;
 import com.fileflow.server.service.DocumentValidator;
 import com.fileflow.server.service.OfficeConversionService;
 import com.fileflow.server.service.PdfCompressionService;
 import com.fileflow.server.service.TableExtractionService;
+import com.fileflow.server.service.CapabilityService;
+import com.fileflow.server.service.ProcessingException;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -29,26 +29,20 @@ public class ConversionController {
     private final OfficeConversionService office;
     private final PdfCompressionService compression;
     private final TableExtractionService tables;
-    private final ProcessingProperties properties;
+    private final CapabilityService health;
 
     public ConversionController(DocumentValidator validator, OfficeConversionService office, PdfCompressionService compression,
-                                TableExtractionService tables, ProcessingProperties properties) {
+                                TableExtractionService tables, CapabilityService health) {
         this.validator = validator;
         this.office = office;
         this.compression = compression;
         this.tables = tables;
-        this.properties = properties;
+        this.health = health;
     }
 
     @GetMapping("/health/capabilities")
     public Map<String, Object> capabilities() {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", "ready");
-        result.put("maxFileBytes", properties.maxFileBytes());
-        result.put("maxPages", properties.maxPages());
-        result.put("operations", java.util.List.of("pdf-to-docx", "docx-to-pdf", "pdf-compress", "pdf-tables"));
-        result.put("retention", "temporary-workspace-deleted-after-request");
-        return result;
+        return health.capabilities();
     }
 
     @PostMapping(path = "/convert/pdf-to-docx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -79,6 +73,7 @@ public class ConversionController {
 
     @PostMapping(path = "/pdf/tables/xlsx", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<byte[]> tablesToXlsx(@RequestBody TableExtractionService.Response request) {
+        if (request == null) throw new ProcessingException("No reviewed tables were supplied.");
         byte[] output = tables.toXlsx(request.tables());
         return download(output, XLSX, "fileflow-tables.xlsx", 0, null);
     }

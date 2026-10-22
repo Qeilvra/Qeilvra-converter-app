@@ -3,6 +3,18 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  server: { proxy: { '/api/v1': {
+    target: 'http://127.0.0.1:8080', changeOrigin: true,
+    configure(proxy) {
+      proxy.on('proxyReq', (proxied, incoming) => {
+        // The browser already called its own origin. Avoid a false CORS mismatch after
+        // proxying Host to the worker; preserve foreign origins for backend rejection.
+        const origin = incoming.headers.origin;
+        try { if (origin && new URL(origin).host === incoming.headers.host) proxied.removeHeader('origin'); }
+        catch { /* Malformed origins must reach the backend's CORS rejection. */ }
+      });
+    }
+  } } },
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
@@ -29,6 +41,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
       }
     })
@@ -40,8 +53,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('pdfjs-dist')) return 'engine-pdfjs';
-          if (id.includes('exceljs')) return 'engine-excel';
           if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('dompurify')) return 'engine-jspdf';
           if (id.includes('pdf-lib')) return 'engine-pdflib';
           if (id.includes('/docx/') || id.includes('jszip')) return 'engine-office';

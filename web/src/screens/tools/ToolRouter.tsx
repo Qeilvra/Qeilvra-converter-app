@@ -18,13 +18,13 @@ export function ToolRouter() {
   let screen;
   switch (tool.id) {
     case 'pdf-to-excel': screen = <PdfToExcel tool={tool} />; break;
-    case 'pdf-to-word': screen = <DocumentConverter tool={tool} direction="pdf-word" />; break;
-    case 'word-to-pdf': screen = <DocumentConverter tool={tool} direction="word-pdf" />; break;
-    case 'image-to-pdf': screen = <ImageToPdf tool={tool} />; break;
+    case 'pdf-to-word': screen = <DocumentConverter key={tool.id} tool={tool} direction="pdf-word" />; break;
+    case 'word-to-pdf': screen = <DocumentConverter key={tool.id} tool={tool} direction="word-pdf" />; break;
+    case 'image-to-pdf': screen = <ImageToPdf key={tool.id} tool={tool} />; break;
     case 'image-converter': screen = <ImageConverter tool={tool} />; break;
     case 'compress-image': screen = <ImageCompressor tool={tool} />; break;
     case 'compress-pdf': screen = <PdfCompressor tool={tool} />; break;
-    case 'scanner': screen = <ImageToPdf tool={tool} scanner />; break;
+    case 'scanner': screen = <ImageToPdf key={tool.id} tool={tool} scanner />; break;
     case 'pdf-editor': screen = <PdfEditor tool={tool} />; break;
     case 'prepare-upload': screen = <PrepareUpload tool={tool} />; break;
   }

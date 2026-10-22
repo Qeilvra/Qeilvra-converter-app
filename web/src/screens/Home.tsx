@@ -16,7 +16,7 @@ export function Home() {
 
       <section className="hero-card">
         <div className="hero-card__copy">
-          <span className="eyebrow"><LockKeyhole size={15} /> Files stay on your device</span>
+          <span className="eyebrow"><LockKeyhole size={15} /> Local tools, optional service</span>
           <h1>Convert, compress,<br />edit &amp; share.</h1>
           <p>Fast. Simple. Private.</p>
           <button className="button button--primary button--hero" type="button" onClick={() => navigate('/tools')}>

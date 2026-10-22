@@ -16,24 +16,41 @@ public final class FileValidator {
         validate(resolver, uri, FileKind.IMAGE, maximumBytes);
     }
 
-    public static void validate(@NonNull ContentResolver resolver, @NonNull Uri uri, @NonNull FileKind expected, long maximumBytes) throws IOException {
+    public static long validate(@NonNull ContentResolver resolver, @NonNull Uri uri, @NonNull FileKind expected, long maximumBytes) throws IOException {
         try (AssetFileDescriptor descriptor = resolver.openAssetFileDescriptor(uri, "r")) {
             if (descriptor != null) {
                 long length = descriptor.getLength();
-                if (length == 0) throw new IOException("This image is empty.");
+                if (length == 0) throw new IOException("This file is empty.");
                 if (length > maximumBytes) throw new IOException("This file exceeds the local processing size limit.");
             }
         }
         byte[] header = new byte[12];
         int count;
+        long total;
         try (InputStream input = resolver.openInputStream(uri)) {
             if (input == null) throw new IOException("The selected file is unavailable.");
-            count = input.read(header);
+            count = 0;
+            while (count < header.length) {
+                int next = input.read(header, count, header.length - count);
+                if (next < 0) break;
+                count += next;
+            }
+            // Providers can omit or lie about metadata. Enforce the actual stream limit.
+            total = count;
+            byte[] buffer = new byte[32 * 1024];
+            int next;
+            while ((next = input.read(buffer)) != -1) {
+                total += next;
+                if (total > maximumBytes) throw new IOException("This file exceeds the local processing size limit.");
+                if (Thread.currentThread().isInterrupted()) throw new IOException("File selection was cancelled.");
+            }
+            if (total == 0) throw new IOException("This file is empty.");
         }
         FileKind detected = detectHeader(header, count);
         if (expected == FileKind.IMAGE ? detected != FileKind.IMAGE : detected != expected) {
             throw new IOException(expected == FileKind.IMAGE ? "This file is not a supported JPG, PNG or WebP image." : "The file contents do not match the required format.");
         }
+        return total;
     }
 
     public static boolean isSupportedImageHeader(@NonNull byte[] header, int length) {

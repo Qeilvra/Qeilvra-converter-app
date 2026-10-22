@@ -12,10 +12,15 @@ import com.google.android.ump.UserMessagingPlatform;
 public final class SettingsActivity extends AppCompatActivity {
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState); setContentView(R.layout.activity_settings);
+        ToolIo.insets(this);
         findViewById(R.id.buttonBack).setOnClickListener(view -> finish());
         MaterialSwitch dark = findViewById(R.id.switchDark);
         dark.setChecked(AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES);
-        dark.setOnCheckedChangeListener((button, checked) -> AppCompatDelegate.setDefaultNightMode(checked ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO));
+        dark.setOnCheckedChangeListener((button, checked) -> {
+            int mode = checked ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
+            getSharedPreferences("fileflow.settings", MODE_PRIVATE).edit().putInt("nightMode", mode).apply();
+            AppCompatDelegate.setDefaultNightMode(mode);
+        });
         MaterialSwitch urdu = findViewById(R.id.switchUrdu);
         urdu.setChecked(AppCompatDelegate.getApplicationLocales().toLanguageTags().startsWith("ur"));
         urdu.setOnCheckedChangeListener((button, checked) -> AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(checked ? "ur" : "en")));

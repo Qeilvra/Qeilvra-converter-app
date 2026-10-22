@@ -17,6 +17,14 @@ Web dependencies retain their previous permissive choices: pdf-lib (MIT), PDF.js
 
 Licenses must be rechecked from the resolved release during every dependency upgrade. Commercial SDKs must not be added in trial mode or committed with license keys.
 
+## Audit correction — transitive engine licensing
+
+`pdf2docx` depends on PyMuPDF/MuPDF. The upstream PyMuPDF documentation specifies AGPL or commercial licensing; a top-level MIT entry does not establish that the complete conversion stack is permissively licensed. Public hosting/distribution needs a documented compliance decision for the exact resolved versions. No commercial license or paid engine was added during the audit. [PyMuPDF licensing](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright).
+
+The installed baseline's published limitations include left-to-right text, missing semantic header/footer and list reconstruction, and no integrated OCR. These limitations are relevant to Urdu/RTL and must be reflected in quality claims. [Version 0.5.8 features and limitations](https://pypi.org/project/pdf2docx/0.5.8/).
+
+Dependency audit scope: `npm audit --json` returned zero advisories for the resolved web tree on October 22, 2026. This is not a Maven, Android, container, or Python security certification. PDFBox's official advisories for CVE-2026-23907 and CVE-2026-33929 concern the examples module's embedded-file extraction; FileFlow does not call that example. Continue release scanning rather than presenting unrelated example code as a demonstrated application exploit. [PDFBox security](https://pdfbox.apache.org/security.html).
+
 Primary references:
 
 - LibreOffice command-line PDF export and filters: <https://help.libreoffice.org/latest/en-US/text/shared/guide/pdf_params.html>, <https://help.libreoffice.org/latest/ast/text/shared/guide/convertfilters.html>

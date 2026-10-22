@@ -4,6 +4,8 @@ import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -11,19 +13,21 @@ import org.springframework.web.filter.CorsFilter;
 @Configuration
 public class WebConfig {
     @Bean
-    CorsFilter corsFilter(ProcessingProperties properties) {
+    FilterRegistrationBean<CorsFilter> corsFilter(ProcessingProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.origins());
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Content-Type", "Accept"));
         configuration.setExposedHeaders(java.util.List.of(
                 "Content-Disposition", "X-FileFlow-Original-Size", "X-FileFlow-Output-Size",
-                "X-FileFlow-Reduced", "X-FileFlow-Images-Optimized"));
+                "X-FileFlow-Reduced", "X-FileFlow-Images-Optimized", "Retry-After"));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
-        return new CorsFilter(source);
+        FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(new CorsFilter(source));
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 
     @Bean

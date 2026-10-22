@@ -7,8 +7,8 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     environment:
-      FILEFLOW_ALLOWED_ORIGINS: http://localhost:5173
-      FILEFLOW_WORKER_CONCURRENCY: "2"
+      FILEFLOW_ALLOWED_ORIGINS: ${FILEFLOW_ALLOWED_ORIGINS:-http://localhost:5173}
+      FILEFLOW_WORKER_CONCURRENCY: ${FILEFLOW_WORKER_CONCURRENCY:-2}
     mem_limit: 1536m
     cpus: 2.0
     pids_limit: 256

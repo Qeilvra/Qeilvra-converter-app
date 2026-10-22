@@ -31,6 +31,7 @@ export type ExtractedTable = {
   id: string;
   page: number;
   rows: TableCell[][];
+  columnTypes?: Array<'text' | 'number' | 'date'>;
 };
 
 export type ImageOutputFormat = 'image/jpeg' | 'image/png' | 'image/webp';

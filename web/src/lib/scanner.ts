@@ -79,14 +79,21 @@ export const detectDocumentCorners = async (file: Blob): Promise<DocumentCorners
 };
 
 export const renderScannedPage = async (file: Blob, corners: DocumentCorners, options: ScanOptions): Promise<Blob> => {
+  const ordered = [corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft];
+  if (ordered.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.y < 0 || point.x > 1 || point.y > 1)) throw new Error('Document corners must be within the image.');
+  const turns = ordered.map((a, i) => { const b = ordered[(i + 1) % 4]; const c = ordered[(i + 2) % 4]; return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x); });
+  if (turns.some((turn) => turn <= .0001)) throw new Error('The selected corners must form a rectangle-like document without crossing.');
+  if (![options.brightness, options.contrast].every((value) => Number.isFinite(value) && value >= -80 && value <= 80)) throw new Error('Brightness and contrast must be between -80 and 80.');
   const bitmap = await load(file);
   try {
+    if (bitmap.width * bitmap.height > 24_000_000) throw new Error('Scanner images must be at most 24 megapixels. Resize the image before scanning.');
     const sourcePoints = [corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft].map((point) => ({ x: point.x * bitmap.width, y: point.y * bitmap.height }));
     const rawWidth = Math.max(distance(sourcePoints[0], sourcePoints[1]), distance(sourcePoints[3], sourcePoints[2]));
     const rawHeight = Math.max(distance(sourcePoints[0], sourcePoints[3]), distance(sourcePoints[1], sourcePoints[2]));
     if (rawWidth < 1 || rawHeight < 1) throw new Error('The selected document corners are too close together.');
     const outputScale = Math.min(8, Math.max(1, 800 / Math.max(rawWidth, rawHeight)));
-    const outWidth = Math.round(Math.min(2600, rawWidth * outputScale)); const outHeight = Math.round(Math.min(3600, rawHeight * outputScale));
+    const limitedScale = Math.min(outputScale, 2600 / rawWidth, 3600 / rawHeight);
+    const outWidth = Math.max(2, Math.round(rawWidth * limitedScale)); const outHeight = Math.max(2, Math.round(rawHeight * limitedScale));
     const sourceCanvas = document.createElement('canvas'); sourceCanvas.width = bitmap.width; sourceCanvas.height = bitmap.height;
     const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
     if (!sourceContext) throw new Error('Perspective correction is unavailable.');

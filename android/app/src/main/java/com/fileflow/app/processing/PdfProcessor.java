@@ -23,6 +23,12 @@ public final class PdfProcessor {
 
     private PdfProcessor() {}
 
+    public static void validateResult(byte[] bytes) throws IOException {
+        try (PDDocument document = PDDocument.load(new java.io.ByteArrayInputStream(bytes), MemoryUsageSetting.setupTempFileOnly())) {
+            requirePageLimit(document);
+        }
+    }
+
     @NonNull
     public static String extractText(@NonNull ContentResolver resolver, @NonNull Uri uri) throws IOException {
         try (InputStream input = requireInput(resolver, uri);
@@ -73,6 +79,11 @@ public final class PdfProcessor {
     public static byte[] merge(@NonNull ContentResolver resolver, @NonNull List<Uri> uris) throws IOException {
         if (uris.size() < 2) throw new IOException("Select at least two PDFs to merge.");
         if (uris.size() > 20) throw new IOException("Merge at most 20 PDFs at once.");
+        int totalPages = 0;
+        for (Uri uri : uris) {
+            totalPages += pageCount(resolver, uri);
+            if (totalPages > MAX_PAGES) throw new IOException("The merged PDF exceeds the 500-page local processing limit.");
+        }
         PDFMergerUtility merger = new PDFMergerUtility();
         List<InputStream> inputs = new ArrayList<>();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -121,7 +132,10 @@ public final class PdfProcessor {
             for (int index = 0; index < pageIndexes.size(); index++) {
                 int pageIndex = pageIndexes.get(index);
                 if (pageIndex < 0 || pageIndex >= source.getNumberOfPages()) throw new IOException("A selected page is out of range.");
-                PDPage page = output.importPage(source.getPage(pageIndex));
+                PDPage sourcePage = source.getPage(pageIndex);
+                PDPage page = output.importPage(sourcePage);
+                // importPage does not copy resources inherited from the source page tree.
+                page.setResources(sourcePage.getResources());
                 page.setRotation((page.getRotation() + rotations.get(index)) % 360);
             }
             output.save(bytes);
@@ -154,6 +168,7 @@ public final class PdfProcessor {
 
     private static void requirePageLimit(PDDocument document) throws IOException {
         if (document.isEncrypted()) throw new IOException("Password-protected PDFs are not supported.");
+        if (document.getNumberOfPages() < 1) throw new IOException("This PDF contains no pages.");
         if (document.getNumberOfPages() > MAX_PAGES) throw new IOException("This PDF exceeds the 500-page local processing limit.");
     }
 

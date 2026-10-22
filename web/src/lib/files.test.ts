@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
-import { formatBytes, readHistory, readSettings, safeBaseName, sniffFileType, validateFile } from './files';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { addHistory, formatBytes, readHistory, readSettings, safeBaseName, sniffFileType, validateFile } from './files';
 
 beforeEach(() => localStorage.clear());
 
@@ -33,5 +33,10 @@ describe('file utilities', () => {
     localStorage.setItem('fileflow.history.v1', JSON.stringify([{ id: 1, outputSize: 'large' }]));
     expect(readSettings()).toEqual({ theme: 'light', language: 'en', retainOutputs: false });
     expect(readHistory()).toEqual([]);
+  });
+  it('does not fail successful file generation when local history storage is full', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Quota exceeded', 'QuotaExceededError'); });
+    expect(() => addHistory({ operation: 'Test', sourceName: 'source.pdf', outputName: 'result.pdf', outputSize: 10 })).not.toThrow();
+    setItem.mockRestore();
   });
 });

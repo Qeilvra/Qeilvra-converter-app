@@ -4,6 +4,8 @@ const HISTORY_KEY = 'fileflow.history.v1';
 const SETTINGS_KEY = 'fileflow.settings.v1';
 const OUTPUT_DB = 'fileflow.outputs.v1';
 const OUTPUT_STORE = 'outputs';
+let retentionGeneration = 0;
+let retentionQueue: Promise<void> = Promise.resolve();
 
 export const formatBytes = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
@@ -19,6 +21,7 @@ export const safeBaseName = (name: string): string => {
 };
 
 export const downloadBlob = (blob: Blob, filename: string): void => {
+  if (blob.size === 0) throw new Error('This output is empty. Process the file again before saving.');
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -54,7 +57,7 @@ export const readHistory = (): RecentItem[] => {
       return typeof entry.id === 'string' && typeof entry.operation === 'string' &&
         typeof entry.sourceName === 'string' && typeof entry.outputName === 'string' &&
         typeof entry.outputSize === 'number' && Number.isFinite(entry.outputSize) &&
-        typeof entry.createdAt === 'string';
+        typeof entry.createdAt === 'string' && Number.isFinite(Date.parse(entry.createdAt));
     });
   } catch {
     return [];
@@ -76,12 +79,21 @@ const openOutputDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) =
   request.onerror = () => reject(request.error ?? new Error('Could not open output storage.'));
 });
 
-const storeOutput = async (entry: RecentItem, blob: Blob): Promise<void> => {
+const storeOutput = async (entry?: RecentItem, blob?: Blob): Promise<void> => {
   const db = await openOutputDb();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(OUTPUT_STORE, 'readwrite');
-      transaction.objectStore(OUTPUT_STORE).put({ id: entry.id, filename: entry.outputName, blob } satisfies StoredOutput);
+      const outputStore = transaction.objectStore(OUTPUT_STORE);
+      if (entry && blob) outputStore.put({ id: entry.id, filename: entry.outputName, blob } satisfies StoredOutput);
+      const retainedIds = new Set(readHistory().map((item) => item.id));
+      const cursorRequest = outputStore.openCursor();
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result;
+        if (!cursor) return;
+        if (!retainedIds.has(String(cursor.key))) cursor.delete();
+        cursor.continue();
+      };
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error ?? new Error('Could not retain this output.'));
       transaction.onabort = () => reject(transaction.error ?? new Error('Output retention was cancelled.'));
@@ -133,11 +145,17 @@ export const addHistory = (item: Omit<RecentItem, 'id' | 'createdAt' | 'outputRe
     createdAt: new Date().toISOString(),
     outputRetained: false
   };
-  const next = [entry, ...readHistory()].slice(0, 30);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  const previous = readHistory();
+  const next = [entry, ...previous].slice(0, 30);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); }
+  catch { return entry; } // Storage failure must not invalidate a successfully generated file.
   window.dispatchEvent(new Event('fileflow-history'));
   if (blob && readSettings().retainOutputs) {
-    void storeOutput(entry, blob).then(() => {
+    const generation = retentionGeneration;
+    retentionQueue = retentionQueue.then(async () => {
+      if (generation !== retentionGeneration || !readHistory().some((item) => item.id === entry.id)) return;
+      await storeOutput(entry, blob);
+      if (generation !== retentionGeneration) return;
       const current = readHistory();
       const retained = current.map((record) => record.id === entry.id ? { ...record, outputRetained: true } : record);
       localStorage.setItem(HISTORY_KEY, JSON.stringify(retained));
@@ -145,14 +163,18 @@ export const addHistory = (item: Omit<RecentItem, 'id' | 'createdAt' | 'outputRe
     }).catch(() => {
       // Quota and private-mode failures leave a truthful metadata-only record.
     });
+  } else if (previous.some((item) => item.outputRetained)) {
+    retentionQueue = retentionQueue.then(() => storeOutput()).catch(() => undefined);
   }
   return entry;
 };
 
 export const clearHistory = (): void => {
-  localStorage.removeItem(HISTORY_KEY);
+  retentionGeneration += 1;
+  try { localStorage.removeItem(HISTORY_KEY); } catch { /* Storage may be disabled. */ }
   window.dispatchEvent(new Event('fileflow-history'));
-  void clearStoredOutputs();
+  // Serialize with in-flight writes so Clear cannot be followed by a stale retained file.
+  retentionQueue = retentionQueue.then(clearStoredOutputs, clearStoredOutputs);
 };
 
 export type AppSettings = { theme: 'light' | 'dark' | 'system'; language: 'en' | 'ur'; retainOutputs: boolean };
@@ -189,6 +211,7 @@ export const sniffFileType = async (file: File): Promise<'pdf' | 'jpeg' | 'png' 
 };
 
 export const validateFile = async (file: File, allowed: Array<Awaited<ReturnType<typeof sniffFileType>>>, maxMb = 50): Promise<void> => {
+  if (!file) throw new Error('Choose a file first.');
   if (file.size === 0) throw new Error('This file is empty. Choose a different file.');
   if (file.size > maxMb * 1024 * 1024) throw new Error(`This file is larger than the ${maxMb} MB browser limit.`);
   const detected = await sniffFileType(file);

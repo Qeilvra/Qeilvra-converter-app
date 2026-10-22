@@ -16,6 +16,7 @@ public final class RecentActivity extends AppCompatActivity {
     private LinearLayout container;
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState); setContentView(R.layout.activity_recent);
+        ToolIo.insets(this);
         container = findViewById(R.id.historyContainer);
         findViewById(R.id.buttonBack).setOnClickListener(view -> finish());
         findViewById(R.id.buttonClear).setOnClickListener(view -> { HistoryStore.clear(this); render(); });

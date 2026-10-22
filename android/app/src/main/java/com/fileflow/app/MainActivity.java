@@ -13,6 +13,7 @@ public final class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ToolIo.insets(this);
         MaterialCardView imageCompressor = findViewById(R.id.cardImageCompressor);
         imageCompressor.setOnClickListener(view -> startActivity(new Intent(this, ImageCompressActivity.class)));
         bindTool(R.id.buttonPdfExcel, "pdf-excel");

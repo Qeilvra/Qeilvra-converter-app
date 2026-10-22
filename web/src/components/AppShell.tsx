@@ -1,5 +1,7 @@
-import { Clock3, Grid2X2, Home, Settings } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Clock3, Grid2X2, Home, LogIn, LogOut, Settings, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { Brand } from './Brand';
 
 const nav = [
@@ -10,6 +12,19 @@ const nav = [
 ];
 
 export function AppShell() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
+  const logout = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      navigate('/login');
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   return (
     <div className="app-shell">
       <aside className="desktop-sidebar">
@@ -21,6 +36,13 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        <div className="sidebar-account">
+          {user ? <>
+            <span className="sidebar-account__avatar"><UserRound /></span>
+            <span className="sidebar-account__copy"><strong>Signed in</strong><small title={user.email}>{user.email}</small></span>
+            <button type="button" aria-label="Log out" title="Log out" onClick={logout} disabled={signingOut}><LogOut /></button>
+          </> : <NavLink to="/login"><LogIn /><span>Log in</span></NavLink>}
+        </div>
         <div className="privacy-note">
           <span className="privacy-note__dot" />
           <strong>Private by design</strong>

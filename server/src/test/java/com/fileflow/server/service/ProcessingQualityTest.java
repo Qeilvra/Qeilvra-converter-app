@@ -37,7 +37,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 class ProcessingQualityTest {
     private final ProcessingProperties properties = new ProcessingProperties(
             50L * 1024 * 1024, 500, Duration.ofSeconds(5), 1, "http://localhost",
-            "soffice", "fileflow-qpdf-not-installed", "python3 -m pdf2docx convert {input} {output}");
+            "soffice", "fileflow-qpdf-not-installed", "python3 -m pdf2docx.main convert {input} {output}");
 
     @Test
     void imageHeavyPdfIsReducedWithoutDestroyingSelectableText() throws Exception {
@@ -55,7 +55,7 @@ class ProcessingQualityTest {
     }
 
     @Test
-    void ruledPdfTableBecomesTypedValidWorkbook() throws Exception {
+    void ruledPdfTableBecomesValidWorkbookPreservingSourceText() throws Exception {
         TableExtractionService service = new TableExtractionService(properties);
         TableExtractionService.Response response = service.extract(ruledTablePdf());
 
@@ -65,7 +65,7 @@ class ProcessingQualityTest {
         try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(workbookBytes))) {
             assertTrue(workbook.getNumberOfSheets() > 0);
             assertEquals("Name", workbook.getSheetAt(0).getRow(0).getCell(0).getStringCellValue());
-            assertEquals(92d, workbook.getSheetAt(0).getRow(1).getCell(1).getNumericCellValue());
+            assertEquals("92", workbook.getSheetAt(0).getRow(1).getCell(1).getStringCellValue());
         }
     }
 

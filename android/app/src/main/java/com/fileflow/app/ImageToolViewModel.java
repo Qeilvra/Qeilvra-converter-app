@@ -30,17 +30,19 @@ public final class ImageToolViewModel extends AndroidViewModel {
     @Nullable String outputName;
     @Nullable String outputMime;
     @Nullable Uri pendingCameraUri;
-    private int generation;
+    private volatile int generation;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final MutableLiveData<State> state = new MutableLiveData<>(new State(false, null, "Ready."));
 
     public ImageToolViewModel(@NonNull Application application) { super(application); }
     LiveData<State> state() { return state; }
-    void changed() { outputBytes = null; outputName = null; outputMime = null; state.setValue(new State(false, null, "Ready to process.")); }
+    void changed() { generation++; outputBytes = null; outputName = null; outputMime = null; state.setValue(new State(false, null, "Ready to process.")); }
+    boolean isWorking() { State value = state.getValue(); return value != null && value.working; }
 
     void process(String tool, int option, int targetKb, int maxWidth, int maxHeight) {
-        if (items.isEmpty()) return;
+        if (items.isEmpty() || isWorking()) return;
         final int request = ++generation;
+        outputBytes = null; outputName = null; outputMime = null;
         state.setValue(new State(true, null, "Processing locally…"));
         executor.execute(() -> {
             try {
@@ -54,8 +56,8 @@ public final class ImageToolViewModel extends AndroidViewModel {
                     name = base(items.get(0).name) + "." + format;
                     mime = "jpg".equals(format) ? "image/jpeg" : "image/" + format;
                 } else if ("prepare-upload".equals(tool)) {
-                    if (targetKb < 10 || targetKb > 10240 || maxWidth < 100 || maxHeight < 100) throw new IllegalArgumentException("Use dimensions of at least 100 px and a target from 10 KB to 10 MB.");
-                    ImageCompressor.Result result = ImageCompressor.compress(getApplication().getContentResolver(), items.get(0).uri, targetKb * 1024, 90, maxWidth, maxHeight);
+                    if (targetKb < 10 || targetKb > 10240 || maxWidth < 100 || maxHeight < 100 || maxWidth > 4096 || maxHeight > 4096) throw new IllegalArgumentException("Use dimensions from 100 to 4096 px and a target from 10 KB to 10 MB.");
+                    ImageCompressor.Result result = ImageCompressor.compress(getApplication().getContentResolver(), items.get(0), targetKb * 1024, 90, maxWidth, maxHeight);
                     bytes = result.bytes;
                     name = base(items.get(0).name) + "-ready.jpg";
                     mime = "image/jpeg";
@@ -70,8 +72,8 @@ public final class ImageToolViewModel extends AndroidViewModel {
                 outputBytes = bytes; outputName = name; outputMime = mime;
                 HistoryStore.add(getApplication(), operationName(tool), name, bytes.length);
                 state.postValue(new State(false, null, resultMessage == null ? "Output ready · " + formatBytes(bytes.length) : resultMessage));
-            } catch (Exception error) {
-                if (request == generation) state.postValue(new State(false, error.getMessage() == null ? "Image processing failed." : error.getMessage(), null));
+            } catch (Exception | OutOfMemoryError error) {
+                if (request == generation) state.postValue(new State(false, error instanceof OutOfMemoryError ? "Not enough memory. Try fewer images or a smaller file." : error.getMessage() == null ? "Image processing failed." : error.getMessage(), null));
             }
         });
     }

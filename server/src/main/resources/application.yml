@@ -9,13 +9,17 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 52MB
+logging:
+  level:
+    org.springframework.web: INFO
 fileflow:
   processing:
     max-file-bytes: 52428800
     max-pages: 500
     timeout: 120s
     concurrency: ${FILEFLOW_WORKER_CONCURRENCY:2}
+    requests-per-minute: ${FILEFLOW_REQUESTS_PER_MINUTE:30}
     allowed-origins: ${FILEFLOW_ALLOWED_ORIGINS:http://localhost:5173}
     libre-office-command: ${FILEFLOW_LIBREOFFICE_COMMAND:soffice}
     qpdf-command: ${FILEFLOW_QPDF_COMMAND:qpdf}
-    pdf-to-docx-command: ${FILEFLOW_PDF_TO_DOCX_COMMAND:python3 -m pdf2docx convert {input} {output}}
+    pdf-to-docx-command: ${FILEFLOW_PDF_TO_DOCX_COMMAND:python3 -m pdf2docx.main convert {input} {output}}

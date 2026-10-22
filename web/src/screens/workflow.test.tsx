@@ -7,6 +7,7 @@ import App from '../App';
 import { ResultCard } from '../components/ResultCard';
 import { tools } from '../data/tools';
 import { SettingsPage } from './SettingsPage';
+import { AuthProvider } from '../auth/AuthContext';
 
 beforeEach(() => {
   localStorage.clear();
@@ -44,7 +45,7 @@ describe('save, share and privacy settings', () => {
   });
 
   it('stores output retention as an explicit opt-in', async () => {
-    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    render(<MemoryRouter><AuthProvider><SettingsPage /></AuthProvider></MemoryRouter>);
     const toggle = screen.getByRole('checkbox', { name: /keep generated files/i });
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);

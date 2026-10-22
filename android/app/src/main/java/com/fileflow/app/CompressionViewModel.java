@@ -47,6 +47,7 @@ public final class CompressionViewModel extends AndroidViewModel {
         UiState current = state.getValue();
         if (source == null || (current != null && current.working)) return;
         state.setValue(new UiState(true, null, targetKb));
+        outputBytes = null;
         executor.execute(() -> {
             try {
                 ImageCompressor.Result result = ImageCompressor.compress(
@@ -57,8 +58,8 @@ public final class CompressionViewModel extends AndroidViewModel {
                 targetReached = result.reachedTarget;
                 HistoryStore.add(getApplication(), "Image compression", (sourceName == null ? "image" : sourceName.replaceFirst("\\.[^.]+$", "")) + "-compressed.jpg", result.bytes.length);
                 state.postValue(new UiState(false, null, targetKb));
-            } catch (Exception error) {
-                String message = error.getMessage() == null ? "Compression failed. Try a smaller image." : error.getMessage();
+            } catch (Exception | OutOfMemoryError error) {
+                String message = error instanceof OutOfMemoryError ? "Not enough memory. Try a smaller image." : error.getMessage() == null ? "Compression failed. Try a smaller image." : error.getMessage();
                 state.postValue(new UiState(false, message, targetKb));
             }
         });

@@ -48,6 +48,7 @@ public final class ImageCompressActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_compress);
+        ToolIo.insets(this);
         model = new ViewModelProvider(this).get(CompressionViewModel.class);
         preview = findViewById(R.id.imagePreview);
         fileInfo = findViewById(R.id.textFileInfo);
@@ -92,12 +93,15 @@ public final class ImageCompressActivity extends AppCompatActivity {
 
     private void onImageSelected(@Nullable Uri uri) {
         if (uri == null) return;
-        try {
+        findViewById(R.id.buttonChoose).setEnabled(false);
+        compressButton.setEnabled(false);
+        progress.setVisibility(View.VISIBLE);
+        ToolIo.run(this, () -> {
             FileValidator.validateImage(getContentResolver(), uri, 30L * 1024L * 1024L);
-        } catch (Exception error) {
-            status.setText(error.getMessage() == null ? getString(R.string.invalid_image) : error.getMessage());
-            return;
-        }
+            return com.fileflow.app.processing.BitmapProcessor.thumbnail(getContentResolver(), uri);
+        }, thumbnail -> {
+        findViewById(R.id.buttonChoose).setEnabled(true);
+        progress.setVisibility(View.GONE);
         try {
             getContentResolver().takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } catch (SecurityException ignored) {
@@ -106,11 +110,17 @@ public final class ImageCompressActivity extends AppCompatActivity {
         model.sourceUri = uri;
         model.outputBytes = null;
         readMetadata(uri);
-        preview.setImageURI(uri);
+        preview.setImageBitmap(thumbnail);
         saveButton.setVisibility(View.GONE);
         shareButton.setVisibility(View.GONE);
         status.setText(R.string.ready_to_compress);
         compressButton.setEnabled(true);
+        }, message -> {
+            findViewById(R.id.buttonChoose).setEnabled(true);
+            progress.setVisibility(View.GONE);
+            compressButton.setEnabled(model.sourceUri != null);
+            status.setText(message);
+        });
     }
 
     private void readMetadata(Uri uri) {
@@ -164,42 +174,21 @@ public final class ImageCompressActivity extends AppCompatActivity {
     }
 
     private void onSaveDestinationSelected(@Nullable Uri uri) {
-        if (uri == null || model.outputBytes == null) return;
-        try (OutputStream output = getContentResolver().openOutputStream(uri, "w")) {
-            if (output == null) throw new IllegalStateException("The selected location is unavailable");
-            output.write(model.outputBytes);
-            output.flush();
-            Toast.makeText(this, R.string.saved_successfully, Toast.LENGTH_LONG).show();
-        } catch (Exception error) {
-            Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show();
+        if (uri != null) {
+            if (model.outputBytes != null) ToolIo.save(this, uri, model.outputBytes);
+            else ToolIo.missingResult(this, uri);
         }
     }
 
     private void shareOutput() {
-        if (model.outputBytes == null) return;
-        try {
-            File directory = new File(getCacheDir(), "shared");
-            if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Could not prepare the share cache");
-            File output = new File(directory, "fileflow-compressed.jpg");
-            try (FileOutputStream stream = new FileOutputStream(output, false)) {
-                stream.write(model.outputBytes);
-                stream.flush();
-            }
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", output);
-            Intent share = new Intent(Intent.ACTION_SEND)
-                    .setType("image/jpeg")
-                    .putExtra(Intent.EXTRA_STREAM, uri)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(share, getString(R.string.share_image)));
-        } catch (Exception error) {
-            Toast.makeText(this, error.getMessage() == null ? "Sharing failed" : error.getMessage(), Toast.LENGTH_LONG).show();
-        }
+        if (model.outputBytes != null) ToolIo.share(this, model.outputBytes, outputName(), "image/jpeg");
     }
 
     private void renderRetainedState() {
         if (model.sourceUri != null) {
             readMetadata(model.sourceUri);
-            preview.setImageURI(model.sourceUri);
+            Uri source = model.sourceUri;
+            ToolIo.run(this, () -> com.fileflow.app.processing.BitmapProcessor.thumbnail(getContentResolver(), source), bitmap -> { if (model.outputBytes == null) preview.setImageBitmap(bitmap); else bitmap.recycle(); }, message -> status.setText(message));
             compressButton.setEnabled(true);
         }
         if (model.outputBytes != null) showResult(targetKb());
@@ -207,6 +196,9 @@ public final class ImageCompressActivity extends AppCompatActivity {
 
     private void setBusy(boolean busy) {
         progress.setVisibility(busy ? View.VISIBLE : View.GONE);
+        findViewById(R.id.buttonChoose).setEnabled(!busy);
+        saveButton.setVisibility(!busy && model.outputBytes != null ? View.VISIBLE : View.GONE);
+        shareButton.setVisibility(!busy && model.outputBytes != null ? View.VISIBLE : View.GONE);
         compressButton.setEnabled(!busy && model.sourceUri != null);
     }
 

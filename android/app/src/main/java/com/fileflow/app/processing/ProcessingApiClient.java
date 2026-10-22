@@ -17,6 +17,8 @@ import org.json.JSONObject;
 public final class ProcessingApiClient {
     private static final int CONNECT_TIMEOUT_MS = 15_000;
     private static final int READ_TIMEOUT_MS = 140_000;
+    private static final int MAX_INPUT_BYTES = 50 * 1024 * 1024;
+    private static final int MAX_RESULT_BYTES = 80 * 1024 * 1024;
 
     private ProcessingApiClient() {}
 
@@ -35,14 +37,15 @@ public final class ProcessingApiClient {
         if (tables.length() == 0) throw new IOException("No table structure was detected.");
         StringBuilder output = new StringBuilder();
         for (int tableIndex = 0; tableIndex < tables.length(); tableIndex++) {
-            if (tableIndex > 0) output.append("\n\n");
+            if (tableIndex > 0) output.append("\n");
+            output.append(TableTsv.TABLE_MARKER).append(tableIndex + 1).append(" ===\n");
             JSONArray rows = tables.getJSONObject(tableIndex).getJSONArray("rows");
             for (int rowIndex = 0; rowIndex < rows.length(); rowIndex++) {
                 if (rowIndex > 0) output.append('\n');
                 JSONArray row = rows.getJSONArray(rowIndex);
                 for (int column = 0; column < row.length(); column++) {
                     if (column > 0) output.append('\t');
-                    output.append(row.getJSONObject(column).optString("value").replace('\t', ' ').replace('\n', ' '));
+                    output.append(TableTsv.cell(row.getJSONObject(column).optString("value")));
                 }
             }
         }
@@ -56,9 +59,7 @@ public final class ProcessingApiClient {
 
     @NonNull
     private static byte[] upload(ContentResolver resolver, Uri uri, String path, String contentType, boolean requireReduction) throws IOException {
-        String base = BuildConfig.PROCESSING_API_URL == null ? "" : BuildConfig.PROCESSING_API_URL.trim().replaceAll("/+$", "");
-        if (base.isEmpty()) throw new IOException("Secure document processing is not configured. Set fileflowProcessingApiUrl to the HTTPS service URL.");
-        if (!base.startsWith("https://") && !base.startsWith("http://10.0.2.2")) throw new IOException("The processing service must use HTTPS.");
+        String base = ProcessingEndpoint.normalize(BuildConfig.PROCESSING_API_URL, BuildConfig.DEBUG);
         String boundary = "FileFlow-" + java.util.UUID.randomUUID();
         HttpURLConnection connection = (HttpURLConnection) new URL(base + path).openConnection();
         connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -66,36 +67,39 @@ public final class ProcessingApiClient {
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         connection.setUseCaches(false);
+        connection.setInstanceFollowRedirects(false);
+        connection.setChunkedStreamingMode(32 * 1024);
         connection.setRequestProperty("Accept", "application/octet-stream, application/json");
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
         try {
+            long uploadedBytes;
             try (OutputStream output = connection.getOutputStream(); InputStream input = resolver.openInputStream(uri)) {
                 if (input == null) throw new IOException("The selected file is unavailable.");
                 output.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"document\"\r\nContent-Type: " + contentType + "\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
-                byte[] buffer = new byte[32 * 1024]; int read;
-                while ((read = input.read(buffer)) != -1) { if (Thread.currentThread().isInterrupted()) throw new IOException("Processing was cancelled."); output.write(buffer, 0, read); }
+                uploadedBytes = BoundedStreams.copy(input, output, MAX_INPUT_BYTES);
+                if (uploadedBytes == 0) throw new IOException("The selected file is empty.");
                 output.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.US_ASCII));
             }
             int status = connection.getResponseCode();
-            byte[] body = readAll(status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream());
+            byte[] body = BoundedStreams.read(status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream(), status >= 200 && status < 300 ? MAX_RESULT_BYTES : 64 * 1024);
             if (status < 200 || status >= 300) {
+                if (status == 404) throw new IOException("The conversion endpoint was not found. Check the backend deployment and its /api/v1 URL.");
+                if (status == 429 || status == 503) throw new IOException("The processing service is busy or unavailable. Try again shortly.");
                 try { throw new IOException(new JSONObject(new String(body, StandardCharsets.UTF_8)).optString("error", "Processing failed.")); }
                 catch (org.json.JSONException ignored) { throw new IOException("The processing service returned " + status + "."); }
             }
-            if (requireReduction && !"true".equalsIgnoreCase(connection.getHeaderField("X-FileFlow-Reduced"))) {
+            if (requireReduction && (!"true".equalsIgnoreCase(connection.getHeaderField("X-FileFlow-Reduced")) || body.length >= uploadedBytes)) {
                 throw new IOException("No safe reduction was found. The original file was kept.");
             }
             if (body.length == 0) throw new IOException("The processing service returned an empty result.");
+            if (path.startsWith("/convert/pdf-to-docx")) {
+                OfficeOpenXml.validateDocx(body);
+            } else if (!path.startsWith("/pdf/tables")) {
+                if (FileValidator.detectHeader(body, body.length) != FileValidator.FileKind.PDF) throw new IOException("The service did not return a PDF. Check the backend URL and retry.");
+                PdfProcessor.validateResult(body);
+            }
             return body;
         } finally { connection.disconnect(); }
     }
 
-    private static byte[] readAll(InputStream input) throws IOException {
-        if (input == null) return new byte[0];
-        try (InputStream stream = input; ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[32 * 1024]; int read;
-            while ((read = stream.read(buffer)) != -1) output.write(buffer, 0, read);
-            return output.toByteArray();
-        }
-    }
 }

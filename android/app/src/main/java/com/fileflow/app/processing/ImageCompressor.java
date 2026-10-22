@@ -2,16 +2,12 @@ package com.fileflow.app.processing;
 
 import android.content.ContentResolver;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.net.Uri;
 import androidx.annotation.NonNull;
-import androidx.exifinterface.media.ExifInterface;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 public final class ImageCompressor {
     private static final int MIN_LONG_EDGE = 320;
@@ -52,12 +48,27 @@ public final class ImageCompressor {
             int maxWidth,
             int maxHeight
     ) throws IOException {
+        return compress(resolver, new BitmapProcessor.ImageEdit(uri), targetBytes, requestedQuality, maxWidth, maxHeight);
+    }
+
+    @NonNull
+    public static Result compress(@NonNull ContentResolver resolver, @NonNull BitmapProcessor.ImageEdit edit, int targetBytes, int requestedQuality, int maxWidth, int maxHeight) throws IOException {
         if (targetBytes < 10 * 1024) throw new IllegalArgumentException("Target must be at least 10 KB");
-        if (maxWidth < 1 || maxHeight < 1) throw new IllegalArgumentException("Maximum dimensions must be positive");
-        Bitmap bitmap = decodeSampled(resolver, uri, maxWidth, maxHeight);
-        if (bitmap == null) throw new IOException("Android could not decode this image");
+        if (maxWidth < 1 || maxHeight < 1 || maxWidth > 4096 || maxHeight > 4096) throw new IllegalArgumentException("Maximum dimensions must be between 1 and 4096 pixels");
+        Bitmap bitmap = BitmapProcessor.render(resolver, edit, Math.max(maxWidth, maxHeight));
+        float scale = Math.min(1f, Math.min((float) maxWidth / bitmap.getWidth(), (float) maxHeight / bitmap.getHeight()));
+        if (scale < 1f) {
+            Bitmap sized = Bitmap.createScaledBitmap(bitmap, Math.max(1, Math.round(bitmap.getWidth() * scale)), Math.max(1, Math.round(bitmap.getHeight() * scale)), true);
+            if (sized != bitmap) bitmap.recycle();
+            bitmap = sized;
+        }
+        if (bitmap.hasAlpha()) {
+            Bitmap flattened = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(flattened); canvas.drawColor(Color.WHITE); canvas.drawBitmap(bitmap, 0, 0, null);
+            bitmap.recycle(); bitmap = flattened;
+        }
+        Bitmap working = bitmap;
         try {
-            Bitmap working = bitmap;
             byte[] bestOver = null;
             int bestOverWidth = working.getWidth();
             int bestOverHeight = working.getHeight();
@@ -86,7 +97,6 @@ public final class ImageCompressor {
                 if (bestUnder != null) {
                     int width = working.getWidth();
                     int height = working.getHeight();
-                    if (working != bitmap) working.recycle();
                     return new Result(bestUnder, width, height, true);
                 }
                 int nextWidth = Math.round(working.getWidth() * 0.82f);
@@ -96,68 +106,11 @@ public final class ImageCompressor {
                 if (working != bitmap) working.recycle();
                 working = scaled;
             }
-            if (working != bitmap) working.recycle();
             if (bestOver == null) throw new IOException("No compressed image could be produced");
             return new Result(bestOver, bestOverWidth, bestOverHeight, false);
         } finally {
+            if (working != bitmap && !working.isRecycled()) working.recycle();
             bitmap.recycle();
-        }
-    }
-
-    private static Bitmap decodeSampled(ContentResolver resolver, Uri uri, int maxWidth, int maxHeight) throws IOException {
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        try (InputStream input = resolver.openInputStream(uri)) {
-            if (input == null) throw new IOException("The selected file is no longer available");
-            BitmapFactory.decodeStream(input, null, bounds);
-        }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IOException("Unsupported or damaged image");
-        int sample = 1;
-        int decodeLongEdge = Math.max(maxWidth, maxHeight);
-        while (Math.max(bounds.outWidth / sample, bounds.outHeight / sample) > decodeLongEdge * 2) sample *= 2;
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sample;
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        try (InputStream input = resolver.openInputStream(uri)) {
-            if (input == null) throw new IOException("The selected file is no longer available");
-            Bitmap decoded = BitmapFactory.decodeStream(input, null, options);
-            if (decoded == null) return null;
-            Bitmap sized = decoded;
-            float scale = Math.min(1f, Math.min((float) maxWidth / decoded.getWidth(), (float) maxHeight / decoded.getHeight()));
-            if (scale < 1f) {
-                sized = Bitmap.createScaledBitmap(decoded, Math.max(1, Math.round(decoded.getWidth() * scale)), Math.max(1, Math.round(decoded.getHeight() * scale)), true);
-                if (sized != decoded) decoded.recycle();
-            }
-            Bitmap oriented = applyOrientation(resolver, uri, sized);
-            if (oriented != sized) sized.recycle();
-            if (!oriented.hasAlpha()) return oriented;
-            Bitmap flattened = Bitmap.createBitmap(oriented.getWidth(), oriented.getHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(flattened);
-            canvas.drawColor(Color.WHITE);
-            canvas.drawBitmap(oriented, 0, 0, null);
-            oriented.recycle();
-            return flattened;
-        }
-    }
-
-    private static Bitmap applyOrientation(ContentResolver resolver, Uri uri, Bitmap source) {
-        try (InputStream input = resolver.openInputStream(uri)) {
-            if (input == null) return source;
-            int orientation = new ExifInterface(input).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-            Matrix matrix = new Matrix();
-            switch (orientation) {
-                case ExifInterface.ORIENTATION_FLIP_HORIZONTAL: matrix.setScale(-1, 1); break;
-                case ExifInterface.ORIENTATION_ROTATE_180: matrix.setRotate(180); break;
-                case ExifInterface.ORIENTATION_FLIP_VERTICAL: matrix.setScale(1, -1); break;
-                case ExifInterface.ORIENTATION_TRANSPOSE: matrix.setRotate(90); matrix.postScale(-1, 1); break;
-                case ExifInterface.ORIENTATION_ROTATE_90: matrix.setRotate(90); break;
-                case ExifInterface.ORIENTATION_TRANSVERSE: matrix.setRotate(270); matrix.postScale(-1, 1); break;
-                case ExifInterface.ORIENTATION_ROTATE_270: matrix.setRotate(270); break;
-                default: return source;
-            }
-            return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-        } catch (IOException | RuntimeException ignored) {
-            return source;
         }
     }
 

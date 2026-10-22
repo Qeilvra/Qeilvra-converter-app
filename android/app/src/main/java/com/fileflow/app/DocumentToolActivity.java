@@ -58,6 +58,7 @@ public final class DocumentToolActivity extends AppCompatActivity {
         tool = getIntent().getStringExtra(EXTRA_TOOL);
         if (tool == null || !isKnownTool(tool)) { finish(); return; }
         setContentView(R.layout.activity_document_tool);
+        ToolIo.insets(this);
         model = new ViewModelProvider(this).get(DocumentToolViewModel.class);
         TextView title = findViewById(R.id.textTitle);
         TextView description = findViewById(R.id.textDescription);
@@ -98,7 +99,7 @@ public final class DocumentToolActivity extends AppCompatActivity {
                 actionSpinner.setVisibility(View.VISIBLE);
                 actionSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, getResources().getStringArray(R.array.pdf_editor_actions)));
                 actionSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-                    @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { renderPages(); processButton.setEnabled(!model.uris.isEmpty() && (position != 0 || !model.pages.isEmpty())); }
+                    @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { renderPages(); processButton.setEnabled(!model.isWorking() && !model.uris.isEmpty() && (position != 0 || !model.pages.isEmpty())); }
                     @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
                 });
                 ((MaterialButton) findViewById(R.id.buttonChoose)).setText(R.string.choose_pdfs);
@@ -116,24 +117,32 @@ public final class DocumentToolActivity extends AppCompatActivity {
 
     private void acceptSelection(List<Uri> selected) {
         if (selected == null || selected.isEmpty()) return;
-        try {
+        if (model.isWorking()) return;
+        findViewById(R.id.buttonChoose).setEnabled(false);
+        processButton.setEnabled(false);
+        progress.setVisibility(View.VISIBLE);
+        ToolIo.run(this, () -> {
             if (!"pdf-editor".equals(tool) && selected.size() != 1) throw new IllegalArgumentException("Select one file.");
             if (selected.size() > 20) throw new IllegalArgumentException("Select at most 20 PDFs.");
             long total = 0;
             ArrayList<String> names = new ArrayList<>();
             FileValidator.FileKind expected = "word-pdf".equals(tool) ? FileValidator.FileKind.DOCX : FileValidator.FileKind.PDF;
             for (Uri uri : selected) {
-                FileValidator.validate(getContentResolver(), uri, expected, MAX_FILE_BYTES);
+                long actualSize = FileValidator.validate(getContentResolver(), uri, expected, MAX_FILE_BYTES);
                 try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
                 Metadata metadata = metadata(uri);
-                total += metadata.size;
+                total += actualSize;
                 names.add(metadata.name);
             }
             if (total > MAX_COMBINED_BYTES) throw new IllegalArgumentException("The selected files exceed the 80 MB combined mobile limit.");
+            return new Selection(names, total);
+        }, selection -> {
+            findViewById(R.id.buttonChoose).setEnabled(true);
+            progress.setVisibility(View.GONE);
             model.select(selected);
-            model.sourceName = selected.size() == 1 ? names.get(0) : selected.size() + "-pdfs";
-            model.sourceSize = total;
-            fileInfo.setText(getString(R.string.selected_files_size, String.join(" · ", names), formatBytes(total)));
+            model.sourceName = selected.size() == 1 ? selection.names.get(0) : selected.size() + "-pdfs";
+            model.sourceSize = selection.size;
+            fileInfo.setText(getString(R.string.selected_files_size, String.join(" · ", selection.names), formatBytes(selection.size)));
             preview.setText("");
             preview.setTag(null);
             resultActions.setVisibility(View.GONE);
@@ -141,21 +150,27 @@ public final class DocumentToolActivity extends AppCompatActivity {
                 actionSpinner.setSelection(selected.size() > 1 ? 1 : 0);
                 if (selected.size() == 1) model.preparePages();
             }
-            processButton.setEnabled(!needsPreview());
+            processButton.setEnabled(!model.isWorking() && !needsPreview());
             if (needsPreview()) model.preparePreview(tool);
-        } catch (Exception error) {
-            status.setText(error.getMessage() == null ? "Unsupported file." : error.getMessage());
-        }
+        }, message -> {
+            findViewById(R.id.buttonChoose).setEnabled(true);
+            progress.setVisibility(View.GONE);
+            processButton.setEnabled(!model.uris.isEmpty());
+            status.setText(message);
+        });
     }
 
     private void render(DocumentToolViewModel.State state) {
         progress.setVisibility(state.working ? View.VISIBLE : View.GONE);
+        findViewById(R.id.buttonChoose).setEnabled(!state.working);
+        actionSpinner.setEnabled(!state.working);
+        preview.setEnabled(!state.working);
         processButton.setEnabled(!state.working && !model.uris.isEmpty() && (!needsPreview() || model.previewText != null));
         if (state.error != null) status.setText(state.error);
         else if (state.message != null) status.setText(state.message);
         if (model.previewText != null && preview.getTag() == null) { preview.setText(model.previewText); preview.setTag(Boolean.TRUE); }
         resultActions.setVisibility(model.outputBytes == null ? View.GONE : View.VISIBLE);
-        if ("pdf-editor".equals(tool)) renderPages();
+        if ("pdf-editor".equals(tool)) { renderPages(); if (state.working) ToolIo.enabled(pageContainer, false); }
     }
 
     private void renderPages() {
@@ -172,10 +187,11 @@ public final class DocumentToolActivity extends AppCompatActivity {
             row.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             row.addView(pageAction("←", () -> movePage(position, -1), index == 0));
             row.addView(pageAction("→", () -> movePage(position, 1), index == model.pages.size() - 1));
-            row.addView(pageAction("↻", () -> { page.rotation = (page.rotation + 90) % 360; model.outputBytes = null; renderPages(); }, false));
-            row.addView(pageAction("×", () -> { if (model.pages.size() > 1) { model.pages.remove(position); model.outputBytes = null; renderPages(); } }, model.pages.size() == 1));
+            row.addView(pageAction("↻", () -> { page.rotation = (page.rotation + 90) % 360; invalidateOutput(); renderPages(); }, false));
+            row.addView(pageAction("×", () -> { if (model.pages.size() > 1) { model.pages.remove(position); invalidateOutput(); renderPages(); } }, model.pages.size() == 1));
             pageContainer.addView(row);
         }
+        if (model.isWorking()) ToolIo.enabled(pageContainer, false);
     }
 
     private MaterialButton pageAction(String text, Runnable action, boolean disabled) {
@@ -187,8 +203,10 @@ public final class DocumentToolActivity extends AppCompatActivity {
 
     private void movePage(int index, int delta) {
         int target = index + delta; if (target < 0 || target >= model.pages.size()) return;
-        Collections.swap(model.pages, index, target); model.outputBytes = null; renderPages();
+        Collections.swap(model.pages, index, target); invalidateOutput(); renderPages();
     }
+
+    private void invalidateOutput() { model.outputBytes = null; model.outputName = null; model.outputMime = null; resultActions.setVisibility(View.GONE); }
 
     private void restore() {
         if (!model.uris.isEmpty()) {
@@ -199,25 +217,14 @@ public final class DocumentToolActivity extends AppCompatActivity {
     }
 
     private void writeOutput(@Nullable Uri uri) {
-        if (uri == null || model.outputBytes == null) return;
-        try (OutputStream output = getContentResolver().openOutputStream(uri, "w")) {
-            if (output == null) throw new IllegalStateException("The selected location is unavailable.");
-            output.write(model.outputBytes); output.flush();
-            Toast.makeText(this, R.string.file_saved_successfully, Toast.LENGTH_LONG).show();
-        } catch (Exception error) { Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show(); }
+        if (uri != null) {
+            if (model.outputBytes != null) ToolIo.save(this, uri, model.outputBytes);
+            else ToolIo.missingResult(this, uri);
+        }
     }
 
     private void share() {
-        if (model.outputBytes == null || model.outputName == null || model.outputMime == null) return;
-        try {
-            File directory = new File(getCacheDir(), "shared");
-            if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Could not prepare the share cache.");
-            File file = new File(directory, model.outputName.replaceAll("[^a-zA-Z0-9._-]", "-"));
-            try (FileOutputStream output = new FileOutputStream(file, false)) { output.write(model.outputBytes); output.flush(); }
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", file);
-            Intent intent = new Intent(Intent.ACTION_SEND).setType(model.outputMime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, getString(R.string.share_output)));
-        } catch (Exception error) { Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show(); }
+        if (model.outputBytes != null && model.outputName != null && model.outputMime != null) ToolIo.share(this, model.outputBytes, model.outputName, model.outputMime);
     }
 
     private Metadata metadata(Uri uri) {
@@ -238,5 +245,6 @@ public final class DocumentToolActivity extends AppCompatActivity {
     private static boolean isKnownTool(String value) { return "pdf-excel".equals(value) || "pdf-word".equals(value) || "word-pdf".equals(value) || "pdf-compress".equals(value) || "pdf-editor".equals(value); }
     private static String formatBytes(long bytes) { if (bytes < 1024) return bytes + " B"; if (bytes < 1024 * 1024) return String.format(Locale.getDefault(), "%.1f KB", bytes / 1024f); return String.format(Locale.getDefault(), "%.1f MB", bytes / (1024f * 1024f)); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private static final class Selection { final List<String> names; final long size; Selection(List<String> names, long size) { this.names = names; this.size = size; } }
     private static final class Metadata { final String name; final long size; Metadata(String name, long size) { this.name = name; this.size = size; } }
 }

@@ -30,7 +30,7 @@ public final class AdsManager {
 
     private static void loadTestBanner(Activity activity, FrameLayout container) {
         Runnable load = () -> activity.runOnUiThread(() -> {
-            if (activity.isFinishing() || container.getChildCount() > 0) return;
+            if (activity.isFinishing() || activity.isDestroyed() || container.getChildCount() > 0) return;
             int width = Math.max(320, Math.round(activity.getResources().getDisplayMetrics().widthPixels / activity.getResources().getDisplayMetrics().density) - 36);
             AdView ad = new AdView(activity);
             ad.setAdUnitId(TEST_BANNER_ID);

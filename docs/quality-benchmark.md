@@ -1,6 +1,26 @@
 # Conversion quality benchmark
 
-## Automated results (2026-10-17)
+## Audit measurements — October 22, 2026
+
+`scripts/benchmark-pdf2docx.py` executed the real `pdf2docx` 0.5.8 converter on three generated PDFs and reopened every DOCX with python-docx. Runs with PyMuPDF 2.0 and 1.26.7 produced the same checked structure. The existing adapter is now pinned to tested PyMuPDF 1.26.7 and python-docx 1.2.0 for reproducibility and to avoid unnecessary PyMuPDF 2 layout/ONNX dependencies. This is not a full dependency security certification; Linux container resolution still needs verification.
+
+| Synthetic fixture | Checked result with PyMuPDF 1.26.7 |
+| --- | --- |
+| Styled two-page document | 7/7 expected text fragments; two sections; three bold runs and one italic run |
+| Ruled table and embedded raster | 7/7 text fragments; one editable table; one inline image; leading-zero and long identifiers retained |
+| Two text columns | 11/11 expected fragments; three sections; visual column positioning/reading order not certified |
+
+The footer string survived, but there were **zero semantic Word footers**. Header/footer reconstruction is therefore a confirmed limitation. Source paragraphs, tables and pictures were inspected structurally; no Word/LibreOffice renderer was available for page-image comparison. These 25 fragments do not establish a general text-completeness percentage, pixel-perfect layout, merged-cell reconstruction, complex Unicode fidelity, or real-world quality across the ten-document release corpus.
+
+Observed conversion-plus-package-inspection times with 1.26.7 were 515/1155/599 ms. The 2.0 run measured 357/554/361 ms under a different concurrent workload. These are descriptive local measurements, not evidence that the pin speeds conversion. Windows PyMuPDF wheel downloads were 18.4 MB for 1.26.7 versus 63.0 MB for 2.0; no claim is made about Android size or Linux image size.
+
+Live HTTP checks in `scripts/verify-processing.mjs` additionally exercised real PDFBox/Tabula/POI extraction and export, numeric/date opt-in, unsafe numeric rejection, CORS, malformed inputs, a supported 500-blank-page fixture, 501-page rejection and scan rejection. Office availability is explicitly labeled UNVERIFIED when an engine is missing; `--require-engines` makes that a failed release gate. See the main audit for final runtime results. Browser remote-tool tests use explicit fixtures and do not count as conversion-engine evidence.
+
+OCR, LibreOffice rendering, licensed competing engines, Microsoft Word/Adobe visual comparisons, RTL shaping and a complex 30–50 MB corpus remain unverified. No paid engine or OCR provider was added.
+
+The audit also reproduced a genuine command configuration failure: `python -m pdf2docx` exits because the installed package has no `__main__`. The default is repaired to `python3 -m pdf2docx.main convert {input} {output}`. An independent `--cli` benchmark then reopened all three generated DOCX files and recovered the same25/25 fragments, table, image and tested styles. These CLI runs measured1543/1668/1754ms including subprocess startup; no universal performance claim follows.
+
+## Historical automated results (2026-10-17)
 
 | Check | Result |
 | --- | --- |

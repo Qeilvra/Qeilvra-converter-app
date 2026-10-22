@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
-import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { PDFDocument } from 'pdf-lib';
 import { describe, expect, it } from 'vitest';
-import { editPdfPages, mergePdfs, splitPdfToZip, tablesToXlsx } from './pdf';
+import { editPdfPages, mergePdfs, splitPdfToZip } from './pdf';
 
 const samplePdf = async (pages: number, name: string): Promise<File> => {
   const document = await PDFDocument.create();
@@ -35,16 +34,9 @@ describe('PDF processing', () => {
     const parsed = await PDFDocument.load(await second!.async('arraybuffer'));
     expect(parsed.getPageCount()).toBe(1);
   });
-
-});
-
-describe('Excel output', () => {
-  it('creates a valid workbook with editable cells', async () => {
-    const blob = await tablesToXlsx([{ id: 'table-1', page: 1, rows: [[{ value: 'Name', uncertain: false }, { value: 'Score', uncertain: false }], [{ value: 'Ayesha', uncertain: false }, { value: '92', uncertain: true }]] }]);
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await blob.arrayBuffer());
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(['Table 1 P1']);
-    expect(workbook.getWorksheet('Table 1 P1')?.getCell('A2').value).toBe('Ayesha');
-    expect(workbook.getWorksheet('Table 1 P1')?.getCell('B2').value).toBe('92');
+  it('rejects invalid page selections and excessive editing workloads', async () => {
+    await expect(editPdfPages(await samplePdf(1, 'one.pdf'), [0], {})).rejects.toThrow(/invalid/);
+    await expect(editPdfPages(await samplePdf(501, 'large.pdf'), [1], {})).rejects.toThrow(/500-page/);
   });
+
 });

@@ -1,1 +1,5 @@
 pdf2docx==0.5.8
+# Tested legacy adapter compatibility. PyMuPDF 2 introduces deprecated fitz
+# shims and extra layout/ONNX dependencies not needed by this converter.
+PyMuPDF==1.26.7
+python-docx==1.2.0

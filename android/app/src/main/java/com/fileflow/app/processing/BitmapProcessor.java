@@ -128,11 +128,13 @@ public final class BitmapProcessor {
                 if (sumScore > maxSum) { maxSum=sumScore; result[4]=x*100f/width; result[5]=y*100f/height; }
                 if (diff < minDiff) { minDiff=diff; result[6]=x*100f/width; result[7]=y*100f/height; }
             }
-            return strong < Math.max(80, width*height/500) ? new float[] {4,4,96,4,96,96,4,96} : result;
+            if (strong < Math.max(80, width*height/500)) return new float[] {4,4,96,4,96,96,4,96};
+            try { DocumentCorners.validate(result); return result; }
+            catch (IOException error) { return new float[] {4,4,96,4,96,96,4,96}; }
         } finally { bitmap.recycle(); }
     }
 
-    private static Bitmap render(ContentResolver resolver, ImageEdit edit, int maxLongEdge) throws IOException {
+    static Bitmap render(ContentResolver resolver, ImageEdit edit, int maxLongEdge) throws IOException {
         Bitmap source = decode(resolver, edit.uri, maxLongEdge);
         if (edit.perspective) source = perspective(source, edit);
         int left = Math.round(source.getWidth() * clamp(edit.cropLeft) / 100f);
@@ -166,6 +168,7 @@ public final class BitmapProcessor {
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IOException("This image is damaged or unsupported.");
         int sample = 1;
         while (Math.max(bounds.outWidth / sample, bounds.outHeight / sample) > maxLongEdge * 2) sample *= 2;
+        while ((long)(bounds.outWidth / sample) * (bounds.outHeight / sample) > 16_000_000) sample *= 2;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
@@ -195,6 +198,8 @@ public final class BitmapProcessor {
             else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) matrix.setRotate(270);
             else if (orientation == ExifInterface.ORIENTATION_FLIP_HORIZONTAL) matrix.setScale(-1, 1);
             else if (orientation == ExifInterface.ORIENTATION_FLIP_VERTICAL) matrix.setScale(1, -1);
+            else if (orientation == ExifInterface.ORIENTATION_TRANSPOSE) { matrix.setRotate(90); matrix.postScale(-1, 1); }
+            else if (orientation == ExifInterface.ORIENTATION_TRANSVERSE) { matrix.setRotate(270); matrix.postScale(-1, 1); }
             else return source;
             Bitmap oriented = Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
             if (oriented != source) source.recycle();
@@ -211,6 +216,9 @@ public final class BitmapProcessor {
     }
 
     private static Bitmap perspective(Bitmap source, ImageEdit edit) throws IOException {
+        try {
+            DocumentCorners.validate(new float[]{edit.topLeftX,edit.topLeftY,edit.topRightX,edit.topRightY,edit.bottomRightX,edit.bottomRightY,edit.bottomLeftX,edit.bottomLeftY});
+        } catch (IOException error) { source.recycle(); throw error; }
         float[] src = {source.getWidth()*edit.topLeftX/100f, source.getHeight()*edit.topLeftY/100f, source.getWidth()*edit.topRightX/100f, source.getHeight()*edit.topRightY/100f, source.getWidth()*edit.bottomRightX/100f, source.getHeight()*edit.bottomRightY/100f, source.getWidth()*edit.bottomLeftX/100f, source.getHeight()*edit.bottomLeftY/100f};
         int width = Math.round(Math.max((float)Math.hypot(src[2]-src[0], src[3]-src[1]), (float)Math.hypot(src[4]-src[6], src[5]-src[7])));
         int height = Math.round(Math.max((float)Math.hypot(src[6]-src[0], src[7]-src[1]), (float)Math.hypot(src[4]-src[2], src[5]-src[3])));

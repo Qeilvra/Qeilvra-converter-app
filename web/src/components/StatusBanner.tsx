@@ -9,5 +9,5 @@ export function StatusBanner({ state, error, mode = 'local' }: { state: 'idle' |
 }
 
 export function PrivacyStrip({ mode = 'local' }: { mode?: ProcessingMode }) {
-  return <div className="privacy-strip"><ShieldCheck /><span><strong>{mode === 'service' ? 'Temporary service processing' : 'Private local processing'}</strong>{mode === 'service' ? 'This operation uses the configured FileFlow worker, which deletes temporary files after the request. Production deployments require HTTPS.' : 'This operation stays in the browser and is not uploaded.'}</span></div>;
+  return <div className="privacy-strip"><ShieldCheck /><span><strong>{mode === 'service' ? 'Temporary service processing' : 'Private local processing'}</strong>{mode === 'service' ? 'This operation uploads to the configured FileFlow worker. It attempts temporary-file cleanup after each request. Production deployments require HTTPS.' : 'This operation stays in the browser and is not uploaded.'}</span></div>;
 }

@@ -22,10 +22,12 @@ export function ImageCompressor({ tool }: { tool: ToolDefinition }) {
   const [preview, setPreview] = useState('');
   const [state, setState] = useState<ProcessingState>('idle');
   const [error, setError] = useState('');
+  useEffect(() => { setResult(null); setPreview(''); }, [file, targetKb, quality, maxWidth]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   const choose = async ([next]: File[]) => {
+    setFile(null); setResult(null); setPreview(''); setState('reading');
     try {
       await validateFile(next, ['jpeg', 'png', 'webp'], 30);
       const decoded = await decodeImage(next);
@@ -49,7 +51,7 @@ export function ImageCompressor({ tool }: { tool: ToolDefinition }) {
   };
 
   const outputName = file ? `${safeBaseName(file.name)}-compressed.jpg` : 'compressed.jpg';
-  return <ToolLayout tool={tool} note="Compress images to a measured maximum size, right in your browser.">
+  return <ToolLayout busy={state === 'processing' || state === 'reading'} tool={tool} note="Compress images to a measured maximum size, right in your browser.">
     <div className="workflow-grid">
       <div className="workflow-main">
         <FileDropzone accept={tool.accept} file={file} label="Select an image" hint="JPG, PNG or WebP · up to 30 MB" onFiles={(files) => void choose(files)} />
@@ -68,6 +70,6 @@ export function ImageCompressor({ tool }: { tool: ToolDefinition }) {
         {preview ? <><img src={preview} alt="Compressed result preview" /><div className="comparison"><span><small>Before</small><strong>{file && formatBytes(file.size)}</strong></span><span><small>After</small><strong>{result && formatBytes(result.blob.size)}</strong></span></div></> : <div className="preview-placeholder"><ImageIcon /><p>Your compressed image will appear here.</p></div>}
       </aside>
     </div>
-    {result && <ResultCard blob={result.blob} filename={outputName} warning={!result.reachedTarget ? `Could not reach ${targetKb} KB without reducing below a readable minimum. Actual size is ${formatBytes(result.blob.size)}.` : undefined} />}
+    {result && <ResultCard blob={result.blob} filename={outputName} warning={!result.reachedTarget ? `Could not reach ${targetKb} KB without reducing below a readable minimum. Actual size is ${formatBytes(result.blob.size)}.` : file && result.blob.size >= file.size ? 'The re-encoded JPEG is not smaller than the original. Keep your original unless you need the changed format or dimensions.' : undefined} />}
   </ToolLayout>;
 }

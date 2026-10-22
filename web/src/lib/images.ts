@@ -10,16 +10,17 @@ export const decodeImage = async (file: File): Promise<DecodedImage> => {
   image.src = url;
   try {
     await image.decode();
+    if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 40_000_000) throw new Error('Image dimensions exceed the 40 megapixel browser limit. Resize the source image first.');
     return { image, width: image.naturalWidth, height: image.naturalHeight, url };
-  } catch {
+  } catch (reason) {
     URL.revokeObjectURL(url);
-    throw new Error('This image could not be decoded. It may be damaged or unsupported.');
+    throw reason instanceof Error && reason.message.includes('megapixel') ? reason : new Error('This image could not be decoded. It may be damaged or unsupported.');
   }
 };
 
 const canvasToBlob = (canvas: HTMLCanvasElement, type: ImageOutputFormat, quality?: number): Promise<Blob> =>
   new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('The browser could not encode this image.'))), type, quality);
+    canvas.toBlob((blob) => (blob && blob.size && blob.type === type ? resolve(blob) : reject(new Error(`This browser cannot encode ${type.replace('image/', '').toUpperCase()}. Choose another output format.`))), type, quality);
   });
 
 export type RenderImageOptions = {
@@ -76,6 +77,8 @@ export const compressImageToTarget = async (
   maxWidth?: number,
   maxHeight?: number
 ): Promise<CompressionResult> => {
+  if (!Number.isFinite(targetBytes) || targetBytes < 10 * 1024 || targetBytes > 10 * 1024 * 1024) throw new Error('Choose a target between 10 KB and 10 MB.');
+  for (const dimension of [maxWidth, maxHeight]) if (dimension !== undefined && (!Number.isInteger(dimension) || dimension < 1 || dimension > 8192)) throw new Error('Image dimensions must be whole numbers between 1 and 8192 pixels.');
   const decoded = await decodeImage(file);
   try {
     const initialScale = Math.min(1, (maxWidth ?? decoded.width) / decoded.width, (maxHeight ?? decoded.height) / decoded.height);
@@ -129,12 +132,14 @@ export const compressImageToTarget = async (
 export const imagesToPdf = async (files: File[], pageSize: 'a4' | 'letter' | 'fit', marginMm: number): Promise<Blob> => {
   if (files.length === 0) throw new Error('Add at least one image.');
   if (files.length > 50) throw new Error('A PDF can contain at most 50 images in one browser session.');
+  if (!Number.isFinite(marginMm) || marginMm < 0 || marginMm > 50) throw new Error('Page margins must be between 0 and 50 mm.');
   let pdf: jsPDF | null = null;
   for (let index = 0; index < files.length; index += 1) {
     const decoded = await decodeImage(files[index]);
     try {
       const orientation = decoded.width > decoded.height ? 'landscape' : 'portrait';
-      const format = pageSize === 'fit' ? [decoded.width * 0.264583, decoded.height * 0.264583] : pageSize;
+      const fitScale = Math.min(0.264583, (5000 - 2 * marginMm) / Math.max(decoded.width, decoded.height));
+      const format = pageSize === 'fit' ? [decoded.width * fitScale + 2 * marginMm, decoded.height * fitScale + 2 * marginMm] : pageSize;
       if (!pdf) pdf = new jsPDF({ orientation, unit: 'mm', format, compress: true });
       else pdf.addPage(format, orientation);
       const pageWidth = pdf.internal.pageSize.getWidth();

@@ -38,7 +38,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     @Nullable String previewText;
     @Nullable String sourceName;
     long sourceSize;
-    private int generation;
+    private volatile int generation;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final MutableLiveData<State> state = new MutableLiveData<>(new State(false, null, null));
 
@@ -56,15 +56,16 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     void preparePages() {
         if (uris.size() != 1) return;
         final int request = ++generation;
+        final Uri source = uris.get(0);
         state.setValue(new State(true, null, "Reading PDF pages…"));
         executor.execute(() -> {
             try {
-                int count = PdfProcessor.pageCount(getApplication().getContentResolver(), uris.get(0));
+                int count = PdfProcessor.pageCount(getApplication().getContentResolver(), source);
                 if (request != generation) return;
                 pages.clear();
                 for (int index = 0; index < count; index++) pages.add(new PageEdit(index));
                 state.postValue(new State(false, null, count + " pages ready to arrange."));
-            } catch (Exception error) {
+            } catch (Exception | OutOfMemoryError error) {
                 if (request == generation) state.postValue(new State(false, message(error, "Could not read PDF pages."), null));
             }
         });
@@ -73,24 +74,26 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     void preparePreview(String tool) {
         if (uris.isEmpty()) return;
         final int request = ++generation;
+        final Uri source = uris.get(0);
         state.setValue(new State(true, null, "Analyzing securely…"));
         executor.execute(() -> {
             try {
                 String text;
-                if ("pdf-excel".equals(tool)) text = ProcessingApiClient.extractTablesTsv(getApplication().getContentResolver(), uris.get(0));
+                if ("pdf-excel".equals(tool)) text = ProcessingApiClient.extractTablesTsv(getApplication().getContentResolver(), source);
                 else throw new IllegalArgumentException("This conversion does not use a text preview.");
                 if (request != generation) return;
                 previewText = text;
                 state.postValue(new State(false, null, "Review the extracted content, then create the output."));
-            } catch (Exception error) {
+            } catch (Exception | OutOfMemoryError error) {
                 if (request == generation) state.postValue(new State(false, message(error, "Could not read this document."), null));
             }
         });
     }
 
     void process(String tool, int editorAction, String editedText) {
-        if (uris.isEmpty()) return;
+        if (uris.isEmpty() || isWorking()) return;
         final int request = ++generation;
+        outputBytes = null; outputName = null; outputMime = null;
         boolean remoteProcess = "pdf-word".equals(tool) || "word-pdf".equals(tool) || "pdf-compress".equals(tool);
         state.setValue(new State(true, null, remoteProcess ? "Uploading securely for isolated processing…" : "Processing locally…"));
         executor.execute(() -> {
@@ -149,13 +152,16 @@ public final class DocumentToolViewModel extends AndroidViewModel {
                 HistoryStore.add(getApplication(), operationName(tool, editorAction), name, bytes.length);
                 String ready = "Output ready · " + formatBytes(bytes.length);
                 state.postValue(new State(false, null, ready));
-            } catch (Exception error) {
+            } catch (Exception | OutOfMemoryError error) {
                 if (request == generation) state.postValue(new State(false, message(error, "Processing failed."), null));
             }
         });
     }
 
-    private static String message(Exception error, String fallback) {
+    boolean isWorking() { State value = state.getValue(); return value != null && value.working; }
+
+    private static String message(Throwable error, String fallback) {
+        if (error instanceof OutOfMemoryError) return "Not enough memory. Try a smaller document or fewer pages.";
         return error.getMessage() == null || error.getMessage().trim().isEmpty() ? fallback : error.getMessage();
     }
 

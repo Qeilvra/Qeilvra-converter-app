@@ -64,6 +64,7 @@ public final class ImageToolActivity extends AppCompatActivity {
         tool = getIntent().getStringExtra(EXTRA_TOOL);
         if (!isKnown(tool)) { finish(); return; }
         setContentView(R.layout.activity_image_tool);
+        ToolIo.insets(this);
         model = new ViewModelProvider(this).get(ImageToolViewModel.class);
         itemsContainer = findViewById(R.id.itemsContainer);
         cropControls = findViewById(R.id.cropControls);
@@ -110,7 +111,7 @@ public final class ImageToolActivity extends AppCompatActivity {
         } else if ("scanner".equals(tool)) {
             title.setText(R.string.document_scanner); description.setText(R.string.description_scanner);
             camera.setVisibility(View.VISIBLE); option.setVisibility(View.VISIBLE);
-            option.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[] {"Enhanced color", "Grayscale", "Black & white"}));
+            option.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[] {"Color", "Grayscale", "Black & white"}));
         } else {
             title.setText(R.string.image_to_pdf); description.setText(R.string.description_image_pdf);
         }
@@ -134,9 +135,16 @@ public final class ImageToolActivity extends AppCompatActivity {
 
     private void addUris(List<Uri> uris, boolean append) {
         if (uris == null || uris.isEmpty()) return;
-        try {
-            if ((append ? model.items.size() : 0) + uris.size() > 50) throw new IllegalArgumentException("Add no more than 50 images.");
-            if (!append) model.items.clear();
+        if (model.isWorking()) return;
+        int initialCount = append ? model.items.size() : 0;
+        findViewById(R.id.buttonChoose).setEnabled(false);
+        findViewById(R.id.buttonCamera).setEnabled(false);
+        processButton.setEnabled(false);
+        progress.setVisibility(View.VISIBLE);
+        ToolIo.run(this, () -> {
+            java.util.ArrayList<ImageToolViewModel.Item> selected = new java.util.ArrayList<>();
+            if (initialCount + uris.size() > 50) throw new IllegalArgumentException("Add no more than 50 images.");
+
             for (Uri uri : uris) {
                 FileValidator.validateImage(getContentResolver(), uri, 30L * 1024L * 1024L);
                 try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
@@ -147,10 +155,22 @@ public final class ImageToolActivity extends AppCompatActivity {
                     item.topLeftX=corners[0]; item.topLeftY=corners[1]; item.topRightX=corners[2]; item.topRightY=corners[3];
                     item.bottomRightX=corners[4]; item.bottomRightY=corners[5]; item.bottomLeftX=corners[6]; item.bottomLeftY=corners[7];
                 }
-                model.items.add(item);
+                selected.add(item);
             }
+            return selected;
+        }, selected -> {
+            if (!append) model.items.clear();
+            model.items.addAll(selected);
+            findViewById(R.id.buttonChoose).setEnabled(true);
+            findViewById(R.id.buttonCamera).setEnabled(true);
             model.changed(); cropIndex = -1; cropControls.setVisibility(View.GONE); renderItems();
-        } catch (Exception error) { status.setText(error.getMessage() == null ? "Unsupported image." : error.getMessage()); }
+        }, message -> {
+            findViewById(R.id.buttonChoose).setEnabled(true);
+            findViewById(R.id.buttonCamera).setEnabled(true);
+            progress.setVisibility(View.GONE);
+            processButton.setEnabled(!model.items.isEmpty());
+            status.setText(message);
+        });
     }
 
     private void renderItems() {
@@ -169,7 +189,8 @@ public final class ImageToolActivity extends AppCompatActivity {
             row.addView(action("×", () -> { model.items.remove(position); model.changed(); cropControls.setVisibility(View.GONE); cropIndex = -1; renderItems(); }, false));
             itemsContainer.addView(row, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
-        processButton.setEnabled(!model.items.isEmpty());
+        processButton.setEnabled(!model.isWorking() && !model.items.isEmpty());
+        if (model.isWorking()) ToolIo.enabled(itemsContainer, false);
         resultActions.setVisibility(model.outputBytes == null ? View.GONE : View.VISIBLE);
     }
 
@@ -208,26 +229,26 @@ public final class ImageToolActivity extends AppCompatActivity {
 
     private void renderState(ImageToolViewModel.State state) {
         progress.setVisibility(state.working ? View.VISIBLE : View.GONE);
+        findViewById(R.id.buttonChoose).setEnabled(!state.working);
+        findViewById(R.id.buttonCamera).setEnabled(!state.working);
+        option.setEnabled(!state.working);
+        ToolIo.enabled(itemsContainer, !state.working);
+        ToolIo.enabled(cropControls, !state.working);
+        widthInput.setEnabled(!state.working); heightInput.setEnabled(!state.working); targetInput.setEnabled(!state.working);
         processButton.setEnabled(!state.working && !model.items.isEmpty());
         if (state.error != null) status.setText(state.error); else if (state.message != null) status.setText(state.message);
         resultActions.setVisibility(model.outputBytes == null ? View.GONE : View.VISIBLE);
     }
 
     private void writeOutput(@Nullable Uri uri) {
-        if (uri == null || model.outputBytes == null) return;
-        try (OutputStream output = getContentResolver().openOutputStream(uri, "w")) { if (output == null) throw new IllegalStateException("The selected location is unavailable."); output.write(model.outputBytes); output.flush(); Toast.makeText(this, R.string.file_saved_successfully, Toast.LENGTH_LONG).show(); }
-        catch (Exception error) { Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show(); }
+        if (uri != null) {
+            if (model.outputBytes != null) ToolIo.save(this, uri, model.outputBytes);
+            else ToolIo.missingResult(this, uri);
+        }
     }
 
     private void share() {
-        if (model.outputBytes == null || model.outputName == null || model.outputMime == null) return;
-        try {
-            File directory = new File(getCacheDir(), "shared"); if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Could not prepare sharing.");
-            File file = new File(directory, model.outputName.replaceAll("[^a-zA-Z0-9._-]", "-"));
-            try (FileOutputStream output = new FileOutputStream(file, false)) { output.write(model.outputBytes); }
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", file);
-            startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType(model.outputMime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), getString(R.string.share_output)));
-        } catch (Exception error) { Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show(); }
+        if (model.outputBytes != null && model.outputName != null && model.outputMime != null) ToolIo.share(this, model.outputBytes, model.outputName, model.outputMime);
     }
 
     private String displayName(Uri uri) {

@@ -26,6 +26,8 @@ npm ci
 npm run dev
 ```
 
+Copy `web/.env.example` to `web/.env.local` and set `VITE_SUPABASE_URL` plus `VITE_SUPABASE_PUBLISHABLE_KEY` from the Supabase project Connect panel. FileFlow uses Supabase email/password authentication with persisted browser sessions and local-device logout. Never put a Supabase service-role key in the web environment.
+
 Vite proxies are not configured automatically in production. Set `VITE_PROCESSING_API_URL` to the HTTPS API ending in `/api/v1`, or reverse-proxy `/api/v1` to the service.
 
 For Android, set `fileflowProcessingApiUrl=https://host/api/v1` in a user-level Gradle property or define `FILEFLOW_PROCESSING_API_URL`, then run `android/gradlew.bat assembleDebug`.
@@ -44,3 +46,17 @@ mvn test
 ```
 
 See [deployment](docs/deployment.md), [quality benchmark status](docs/quality-benchmark.md), and [security](docs/security.md) before exposing the processing API.
+
+## Audit and live verification
+
+The [October 22 repair record](docs/audit-2026-10-22.md) contains the feature/problem/fix/file/test matrix and remaining release gates. The [hosting decision](docs/hosting-options.md) explains the confirmed Vercel 404s and no-card development options. A frontend-only Vercel build does not start the Java worker.
+
+With the real worker running and web test dependencies installed:
+
+```bash
+npm run test:processing -- http://127.0.0.1:8080/api/v1
+# Release gate: fail if either Office engine is unavailable
+npm run test:processing -- https://your-worker.example/api/v1 --require-engines
+```
+
+The script generates synthetic inputs, sends actual HTTP requests and reopens the output files. Missing Office engines are labeled UNVERIFIED; browser tests with fixture responses are not conversion-quality evidence. `scripts/benchmark-pdf2docx.py --cli` tests the real PDF-to-DOCX command using temporary synthetic fixtures in a Python environment installed from `server/requirements.txt`.

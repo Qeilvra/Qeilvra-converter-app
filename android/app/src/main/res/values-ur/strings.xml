@@ -23,7 +23,7 @@
     <string name="clear_history">تاریخ صاف کریں</string>
     <string name="dark_theme">ڈارک تھیم</string>
     <string name="urdu_language">اردو انٹرفیس</string>
-    <string name="privacy_summary">رازداری: تصویری اوزار، اسکینر اور PDF صفحہ تدوین ڈیوائس پر ہوتی ہے۔ اعلیٰ معیار کی تبدیلی، PDF کمپریشن اور جدول شناخت HTTPS کے ذریعے FileFlow سروس کو عارضی نقل بھیجتی ہے، جو درخواست کے بعد حذف ہو جاتی ہے۔ حالیہ سرگرمی صرف میٹا ڈیٹا محفوظ کرتی ہے۔</string>
+    <string name="privacy_summary">رازداری: تصویری اوزار، اسکینر اور PDF صفحہ تدوین ڈیوائس پر ہوتی ہے۔ دستاویز کی تبدیلی، PDF کمپریشن اور جدول شناخت HTTPS کے ذریعے FileFlow سروس کو عارضی نقل بھیجتی ہے۔ ہر درخواست کے بعد عارضی فائلوں کی صفائی کی کوشش کی جاتی ہے۔ حالیہ سرگرمی صرف میٹا ڈیٹا محفوظ کرتی ہے۔</string>
     <string name="terms_summary">PDF اور آفس کی ترتیب مختلف ہو سکتی ہے، اور غیر معمولی فونٹس یا گرافکس میں فرق رہ سکتا ہے۔ اسکین شدہ جدول کے لیے منظور شدہ OCR درکار ہے۔ پہلے سے بہتر فائل مزید چھوٹی نہ بھی ہو سکتی ہے۔</string>
     <string name="ad_privacy_options">اشتہاری رازداری کے اختیارات</string>
     <string name="back">واپس</string>
@@ -82,7 +82,7 @@
     <string name="crop_right">دائیں %%</string>
     <string name="crop_bottom">نیچے %%</string>
     <string name="crop_left">بائیں %%</string>
-    <string name="recent_metadata_only">صرف معلومات محفوظ ہیں؛ بنائی گئی فائلوں کی نقول فائل فلو محفوظ نہیں رکھتا۔</string>
+    <string name="recent_metadata_only">حالیہ سرگرمی صرف معلومات محفوظ کرتی ہے۔ شیئر کی گئی فائلیں اور کیمرے کی تصاویر ایپ کی کیش میں رہ سکتی ہیں جب تک Android اسے صاف نہ کرے یا ایپ حذف نہ کی جائے۔</string>
     <string name="no_recent_activity">کوئی حالیہ سرگرمی نہیں۔</string>
     <string name="description_pdf_excel">جدول کی قطاریں اور کالم شناخت کریں، قابلِ ترمیم پیش منظر درست کریں، پھر حقیقی XLSX ورک بک بنائیں۔</string>
     <string name="description_pdf_word">ترتیب سے باخبر انجن کے ذریعے قابلِ ترمیم DOCX بنائیں۔</string>
@@ -92,7 +92,7 @@
     <string name="description_image_convert">حقیقی JPG، PNG یا WebP تصویر مقامی طور پر بدلیں۔ JPEG شفاف پکسل سفید کر دیتا ہے۔</string>
     <string name="description_prepare_upload">تصویر، دستخط یا دستاویز کو ناپے گئے سائز اور زیادہ سے زیادہ ابعاد کے مطابق تیار کریں۔ متعلقہ پورٹل کے موجودہ اصول ضرور دیکھیں۔</string>
     <string name="description_scanner">تصویر لیں، کنارے خودکار شناخت کریں، چار کونے درست کریں، بہتر بنائیں اور 50 صفحات تک ترتیب دیں۔</string>
-    <string name="privacy_secure_service">یہ دستاویز HTTPS کے ذریعے مقررہ FileFlow سروس کو بھیجی جاتی ہے اور درخواست کے بعد عارضی نقل حذف ہو جاتی ہے۔</string>
+    <string name="privacy_secure_service">یہ دستاویز HTTPS کے ذریعے مقررہ FileFlow سروس کو بھیجی جاتی ہے۔ ہر درخواست کے بعد عارضی فائلوں کی صفائی کی کوشش کی جاتی ہے۔</string>
     <string name="privacy_local_pdf">یہ عمل اسی ڈیوائس پر ہوتا ہے۔ دستاویز اپ لوڈ نہیں کی جاتی۔</string>
     <string name="description_image_pdf">متعدد JPG، PNG یا WebP تصاویر ترتیب دے کر حقیقی کثیر صفحاتی PDF مقامی طور پر بنائیں۔</string>
     <string name="crop_page_number">صفحہ %1$d تراشیں (ہر کنارے سے 0–45%%)</string>

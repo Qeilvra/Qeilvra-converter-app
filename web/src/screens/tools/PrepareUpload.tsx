@@ -26,6 +26,7 @@ export function PrepareUpload({ tool }: { tool: ToolDefinition }) {
   const [preview, setPreview] = useState('');
   const [state, setState] = useState<ProcessingState>('idle');
   const [error, setError] = useState('');
+  useEffect(() => { setBlob(null); setMeta(null); setPreview(''); }, [file, width, height, target]);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   const run = async () => {
     if (!file) return;
@@ -37,9 +38,9 @@ export function PrepareUpload({ tool }: { tool: ToolDefinition }) {
       addHistory({ operation: 'Prepare for Upload', sourceName: file.name, outputName: `${safeBaseName(file.name)}-ready.jpg`, outputSize: output.blob.size }, output.blob);
     } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Could not prepare this image.'); }
   };
-  return <ToolLayout tool={tool} note="Prepare a measured image for forms without relying on unverified portal claims.">
+  return <ToolLayout busy={state === 'processing' || state === 'reading'} tool={tool} note="Prepare a measured image for forms without relying on unverified portal claims.">
     <div className="workflow-grid"><div className="workflow-main">
-      <FileDropzone accept={tool.accept} file={file} label="Select a photo or document" hint="JPG, PNG or WebP · processed locally" onFiles={(files) => void (async () => { try { await validateFile(files[0], ['jpeg', 'png', 'webp'], 30); setFile(files[0]); setBlob(null); setState('idle'); } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Unsupported file.'); } })()} />
+      <FileDropzone accept={tool.accept} file={file} label="Select a photo or document" hint="JPG, PNG or WebP · processed locally" onFiles={(files) => void (async () => { try { setFile(null); setBlob(null); setMeta(null); setPreview(''); setState('reading'); await validateFile(files[0], ['jpeg', 'png', 'webp'], 30); setFile(files[0]); setBlob(null); setState('idle'); } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Unsupported file.'); } })()} />
       {file && <section className="control-card"><div className="control-card__title"><Ruler /><div><h3>Output requirements</h3><p>Presets are editable starting points. Check your form’s current rules.</p></div></div><div className="preset-row">{presets.map((preset) => <button key={preset.label} onClick={() => { setWidth(preset.width); setHeight(preset.height); setTarget(preset.kb); }}><strong>{preset.label}</strong><small>{preset.width}×{preset.height} · {preset.kb} KB</small></button>)}</div><div className="field-grid field-grid--three"><label className="field"><span>Max width (px)</span><input type="number" value={width} min="100" onChange={(event) => setWidth(Number(event.target.value))} /></label><label className="field"><span>Max height (px)</span><input type="number" value={height} min="100" onChange={(event) => setHeight(Number(event.target.value))} /></label><label className="field"><span>Max size (KB)</span><input type="number" value={target} min="10" onChange={(event) => setTarget(Number(event.target.value))} /></label></div><button className="button button--primary button--full" onClick={() => void run()}><BadgeCheck size={18} /> Prepare file</button></section>}
       <StatusBanner state={state} error={error} />
     </div><aside className="preview-panel"><h3>Result check</h3>{preview && meta ? <><img src={preview} alt="Prepared file preview" /><div className="verification-list"><span className={meta.reached ? 'pass' : 'fail'}><BadgeCheck /> Size <strong>{blob && formatBytes(blob.size)}</strong></span><span className="pass"><BadgeCheck /> Dimensions <strong>{meta.width} × {meta.height}</strong></span></div></> : <div className="preview-placeholder"><ImageIcon /><p>The verified dimensions and actual file size will appear here.</p></div>}</aside></div>

@@ -7,8 +7,10 @@ export function ResultCard({ blob, filename, warning }: { blob: Blob; filename: 
   const [error, setError] = useState('');
   const save = () => {
     setError('');
-    downloadBlob(blob, filename);
-    setMessage('Download requested. Confirm the save in your browser.');
+    try {
+      downloadBlob(blob, filename);
+      setMessage('Download requested. Confirm the save in your browser.');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'The download could not be started. Please retry.'); }
   };
   const share = async () => {
     setMessage(''); setError('');

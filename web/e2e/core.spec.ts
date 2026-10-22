@@ -33,14 +33,19 @@ async function wordFixture() {
 }
 
 async function mockProcessingApi(page: import('@playwright/test').Page) {
+  // These fixtures verify browser/API contracts, not backend conversion accuracy.
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/health/capabilities')) {
+      await route.fulfill({ json: { status: 'ready', operations: ['pdf-to-docx', 'docx-to-pdf', 'pdf-tables', 'pdf-compress'] } });
+      return;
+    }
     if (path.endsWith('/pdf/tables/xlsx')) {
-      const payload = route.request().postDataJSON() as { tables: Array<{ rows: Array<Array<{ value: string }>> }> };
+      const payload = route.request().postDataJSON() as { tables: Array<{ rows: Array<Array<{ value: string }>>; columnTypes?: string[] }> };
       const workbook = new ExcelJS.Workbook();
       payload.tables.forEach((table, index) => {
         const sheet = workbook.addWorksheet(`Table ${index + 1}`);
-        table.rows.forEach((row) => sheet.addRow(row.map((cell) => /^\d+(?:\.\d+)?$/.test(cell.value) ? Number(cell.value) : cell.value)));
+        table.rows.forEach((row, rowIndex) => sheet.addRow(row.map((cell, column) => rowIndex > 0 && table.columnTypes?.[column] === 'number' ? Number(cell.value) : cell.value)));
       });
       await route.fulfill({ status: 200, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', body: Buffer.from(await workbook.xlsx.writeBuffer()) });
       return;
@@ -51,6 +56,10 @@ async function mockProcessingApi(page: import('@playwright/test').Page) {
     }
     if (path.endsWith('/convert/docx-to-pdf')) {
       await route.fulfill({ status: 200, contentType: 'application/pdf', body: await tablePdf() });
+      return;
+    }
+    if (path.endsWith('/convert/pdf-to-docx')) {
+      await route.fulfill({ status: 200, contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', body: await wordFixture() });
       return;
     }
     if (path.endsWith('/pdf/compress')) {
@@ -77,6 +86,15 @@ test('dashboard routes every tool and remains within a mobile viewport', async (
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test('login route exposes Supabase email and password authentication', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByLabel('Email address')).toBeVisible();
+  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+  await expect(page.getByRole('alert')).toContainText('Authentication needs configuration');
+});
+
 test('PDF to Excel accepts a real PDF, exposes editable cells, and downloads a valid XLSX', async ({ page }) => {
   await page.goto('/tools/pdf-to-excel');
   await page.locator('input[type=file]').setInputFiles({ name: 'scores.pdf', mimeType: 'application/pdf', buffer: await tablePdf() });
@@ -93,7 +111,7 @@ test('PDF to Excel accepts a real PDF, exposes editable cells, and downloads a v
   expect(path).not.toBeNull();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(path!);
-  expect(workbook.worksheets[0].getCell('B2').value).toBe(93);
+  expect(workbook.worksheets[0].getCell('B2').value).toBe('93');
 });
 
 test('Word to PDF and image conversion produce genuine downloadable formats', async ({ page }) => {
@@ -146,16 +164,28 @@ test('image PDF, scanner crop, compression, and upload preparation complete end 
   await expect(page.getByRole('button', { name: 'Move topLeft corner' })).toBeVisible();
   await page.getByRole('button', { name: 'Create PDF' }).click();
   await expect(page.getByText('Your file is ready')).toBeVisible();
+  pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  path = await (await pending).path();
+  expect((await PDFDocument.load(await readFile(path!))).getPageCount()).toBe(1);
 
   await page.goto('/tools/compress-image');
   await page.locator('input[type=file]').setInputFiles({ name: 'compress.png', mimeType: 'image/png', buffer: pngFixture });
   await page.getByRole('button', { name: 'Compress image', exact: true }).click();
   await expect(page.getByText('Your file is ready')).toBeVisible();
+  pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const compressedImage = await readFile((await (await pending).path())!);
+  expect(compressedImage.byteLength).toBeLessThanOrEqual(100 * 1024);
+  expect([...compressedImage.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
 
   await page.goto('/tools/prepare-upload');
   await page.locator('input[type=file]').setInputFiles({ name: 'profile.png', mimeType: 'image/png', buffer: pngFixture });
   await page.getByRole('button', { name: 'Prepare file' }).click();
   await expect(page.getByText('Your file is ready')).toBeVisible();
+  pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await readFile((await (await pending).path())!)).byteLength).toBeLessThanOrEqual(200 * 1024);
 });
 
 test('PDF compression, merge, page editing, and split generate parseable outputs', async ({ page }) => {
@@ -194,4 +224,150 @@ test('PDF compression, merge, page editing, and split generate parseable outputs
   expect(path).not.toBeNull();
   const archive = await JSZip.loadAsync(await readFile(path!));
   expect(Object.keys(archive.files)).toContain('page-1.pdf');
+});
+
+test('service errors and HTML fallback never produce a successful download', async ({ page }) => {
+  await page.route('**/api/v1/convert/pdf-to-docx', (route) => route.fulfill({ status: 404, body: 'Not Found' }));
+  await page.goto('/tools/pdf-to-word');
+  await page.locator('input[type=file]').setInputFiles({ name: 'source.pdf', mimeType: 'application/pdf', buffer: await tablePdf() });
+  await page.getByRole('button', { name: 'Convert to DOCX' }).click();
+  await expect(page.getByRole('alert')).toContainText('hosted FileFlow backend');
+  await expect(page.getByText('Your file is ready')).toHaveCount(0);
+  await page.route('**/api/v1/convert/pdf-to-docx', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<html>React frontend fallback</html>' }));
+  await page.getByRole('button', { name: 'Convert to DOCX' }).click();
+  await expect(page.getByRole('alert')).toContainText('valid DOCX');
+  await expect(page.getByText('Your file is ready')).toHaveCount(0);
+});
+
+test('table review preserves identifiers and invalidates outdated exports', async ({ page }) => {
+  await page.goto('/tools/pdf-to-excel');
+  await page.locator('input[type=file]').setInputFiles({ name: 'ids.pdf', mimeType: 'application/pdf', buffer: await tablePdf() });
+  await page.getByRole('button', { name: 'Detect tables' }).click();
+  await page.getByLabel('Table 1, row 2, column 2').fill('001234');
+  await page.getByLabel('Table 1, row 3, column 2').fill('12345678901234567890');
+  await page.getByRole('button', { name: 'Export Excel workbook' }).click();
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile((await (await pending).path())!);
+  expect(workbook.worksheets[0].getCell('B2').value).toBe('001234');
+  expect(workbook.worksheets[0].getCell('B3').value).toBe('12345678901234567890');
+  await page.getByLabel('Table 1, row 2, column 2').fill('009999');
+  await expect(page.getByText('Your file is ready')).toHaveCount(0);
+});
+
+test('image output formats, transparency, and stale format settings are correct', async ({ page }) => {
+  await page.goto('/tools/image-converter');
+  const transparent = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = 120; canvas.height = 160; return canvas.toDataURL('image/png').split(',')[1]; });
+  await page.locator('input[type=file]').setInputFiles({ name: 'transparent.png', mimeType: 'image/png', buffer: Buffer.from(transparent, 'base64') });
+  for (const [format, signature] of [['PNG', [0x89, 0x50, 0x4e, 0x47]], ['WebP', [0x52, 0x49, 0x46, 0x46]], ['JPG', [0xff, 0xd8, 0xff]]] as const) {
+    await page.getByRole('button', { name: format, exact: true }).click();
+    await expect(page.getByText('Your file is ready')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Convert image' }).click();
+    const pending = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const buffer = await readFile((await (await pending).path())!);
+    expect([...buffer.subarray(0, signature.length)]).toEqual([...signature]);
+    const pixel = await page.evaluate(async (bytes) => {
+      const image = await createImageBitmap(new Blob([new Uint8Array(bytes)]));
+      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+      const context = canvas.getContext('2d')!; context.drawImage(image, 0, 0); image.close();
+      return { width: canvas.width, height: canvas.height, rgba: [...context.getImageData(0, 0, 1, 1).data] };
+    }, [...buffer]);
+    expect([pixel.width, pixel.height]).toEqual([120, 160]);
+    if (format === 'JPG') expect(pixel.rgba).toEqual([255, 255, 255, 255]);
+    else expect(pixel.rgba[3]).toBe(0);
+  }
+});
+
+test('retained outputs can be saved again and Clear removes the local document store', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByRole('checkbox').check();
+  await page.goto('/tools/image-converter');
+  await page.locator('input[type=file]').setInputFiles({ name: 'retained.png', mimeType: 'image/png', buffer: pngFixture });
+  await page.getByRole('button', { name: 'Convert image' }).click();
+  await expect(page.getByText('Your file is ready')).toBeVisible();
+  await page.goto('/recent');
+  await expect(page.getByRole('button', { name: 'Save again' })).toBeVisible();
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save again' }).click();
+  expect((await readFile((await (await pending).path())!)).subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(page.getByText('No recent activity')).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => new Promise<number>((resolve, reject) => {
+    const opening = indexedDB.open('fileflow.outputs.v1');
+    opening.onerror = () => reject(opening.error);
+    opening.onsuccess = () => { const db = opening.result; const request = db.transaction('outputs').objectStore('outputs').count(); request.onsuccess = () => { resolve(request.result); db.close(); }; request.onerror = () => reject(request.error); };
+  }))).toBe(0);
+});
+
+
+test('320px layouts remain usable with dark and system themes', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'dark', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  for (const path of ['/', '/tools', '/tools/pdf-to-word', '/tools/pdf-to-excel', '/tools/image-to-pdf', '/tools/scanner', '/tools/pdf-editor', '/tools/image-converter', '/tools/compress-image', '/tools/compress-pdf', '/tools/prepare-upload', '/recent', '/settings', '/info/privacy']) {
+    await page.goto(path);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), { message: `Horizontal overflow on ${path}` }).toBeLessThanOrEqual(1);
+  }
+  await page.goto('/tools/compress-image');
+  await page.locator('input[type=file]').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: pngFixture });
+  await page.getByRole('button', { name: 'Compress image', exact: true }).click();
+  await expect(page.getByText('Your file is ready')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: testInfo.outputPath('fileflow-320-dark.png'), fullPage: true });
+  await page.goto('/settings');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.getByRole('button', { name: 'system', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'system');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'system');
+});
+
+test('fit pages include margins for a one-pixel image and invalid upload targets recover', async ({ page }) => {
+  await page.goto('/tools/image-to-pdf');
+  const png = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = 1; canvas.height = 1; return canvas.toDataURL('image/png').split(',')[1]; });
+  await page.locator('input[type=file]').setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await page.getByLabel('Page size').selectOption('fit');
+  await page.getByRole('button', { name: 'Create PDF' }).click();
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const pdf = await PDFDocument.load(await readFile((await (await pending).path())!));
+  expect(pdf.getPage(0).getWidth()).toBeGreaterThan(20 * 72 / 25.4);
+  expect(pdf.getPage(0).getHeight()).toBeGreaterThan(20 * 72 / 25.4);
+
+  await page.goto('/tools/prepare-upload');
+  await page.locator('input[type=file]').setInputFiles({ name: 'profile.png', mimeType: 'image/png', buffer: pngFixture });
+  await page.getByLabel('Max width (px)').fill('0');
+  await page.getByRole('button', { name: 'Prepare file' }).click();
+  await expect(page.getByRole('alert')).toContainText('dimensions');
+  await expect(page.getByText('Your file is ready')).toHaveCount(0);
+  await page.getByLabel('Max width (px)').fill('600');
+  await page.getByRole('button', { name: 'Prepare file' }).click();
+  await expect(page.getByText('Your file is ready')).toBeVisible();
+});
+
+test('retained document pruning and immediate Clear serialize pending writes', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByRole('checkbox').check();
+  const readCount = () => page.evaluate(() => new Promise<number>((resolve, reject) => {
+    const opening = indexedDB.open('fileflow.outputs.v1');
+    opening.onerror = () => reject(opening.error);
+    opening.onsuccess = () => { const db = opening.result; const request = db.transaction('outputs').objectStore('outputs').count(); request.onsuccess = () => { resolve(request.result); db.close(); }; request.onerror = () => reject(request.error); };
+  }));
+  // Exercise the browser's real IndexedDB transaction queue through the production utility.
+  await page.evaluate(async () => {
+    const path = '/src/lib/files.ts'; const files = await import(path);
+    for (let i = 0; i < 35; i++) files.addHistory({ operation: 'storage integration', sourceName: 'source.txt', outputName: `result-${i}.txt`, outputSize: 1 }, new Blob(['x']));
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('fileflow.history.v1') ?? '[]').filter((item: { outputRetained: boolean }) => item.outputRetained).length)).toBe(30);
+  expect(await readCount()).toBe(30);
+  await page.evaluate(async () => {
+    const path = '/src/lib/files.ts'; const files = await import(path);
+    files.addHistory({ operation: 'pending clear', sourceName: 'source.txt', outputName: 'pending.txt', outputSize: 1 }, new Blob(['x']));
+    files.clearHistory();
+  });
+  await expect.poll(readCount).toBe(0);
+  expect(await page.evaluate(() => localStorage.getItem('fileflow.history.v1'))).toBeNull();
 });
