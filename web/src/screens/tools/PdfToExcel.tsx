@@ -1,4 +1,3 @@
-import { ProcessingServiceStatus } from '../../components/ProcessingServiceStatus';
 import { useState } from 'react';
 import { AlertTriangle, FileSpreadsheet, ScanText } from 'lucide-react';
 import { FileDropzone } from '../../components/FileDropzone';
@@ -6,7 +5,7 @@ import { ResultCard } from '../../components/ResultCard';
 import { StatusBanner } from '../../components/StatusBanner';
 import type { ToolDefinition } from '../../data/tools';
 import { addHistory, safeBaseName, validateFile } from '../../lib/files';
-import { extractPdfTablesRemote, tablesToXlsxRemote } from '../../lib/processingApi';
+import { extractPdfTablesLocal, tablesToXlsxLocal } from '../../lib/localDocuments';
 import type { ExtractedTable, ProcessingState } from '../../types';
 import { ToolLayout } from './ToolLayout';
 
@@ -17,11 +16,14 @@ export function PdfToExcel({ tool }: { tool: ToolDefinition }) {
   const [state, setState] = useState<ProcessingState>('idle');
   const [error, setError] = useState('');
   const [scanned, setScanned] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [warning, setWarning] = useState('');
   const analyze = async () => {
     if (!file) return;
-    setState('processing'); setTables([]); setBlob(null); setScanned(false);
+    setState('processing'); setTables([]); setBlob(null); setScanned(false); setWarning(''); setProgress('Loading local PDF engine…');
     try {
-      const result = await extractPdfTablesRemote(file);
+      const result = await extractPdfTablesLocal(file, setProgress);
+      setWarning(result.emptyPages.length ? `Pages ${result.emptyPages.join(', ')} have no selectable text and were not extracted. OCR is required to recover their data.` : 'All cells need review: local extraction estimates columns from text positions. Merged cells and multiline rows may need correction.');
       if (result.scanned) { setScanned(true); throw new Error('This appears to be a scanned PDF. OCR/table recognition must be configured before data can be recovered.'); }
       if (!result.tables.length) throw new Error('No table-like rows were detected. Try a PDF with selectable text arranged in columns.');
       setTables(result.tables); setState('idle');
@@ -37,21 +39,22 @@ export function PdfToExcel({ tool }: { tool: ToolDefinition }) {
   };
   const exportFile = async () => {
     if (!file) return;
-    setState('processing'); setError(''); setBlob(null);
+    setState('processing'); setError(''); setBlob(null); setProgress('Creating workbook…');
     try {
-      const output = await tablesToXlsxRemote(tables); setBlob(output); setState('success');
+      const output = await tablesToXlsxLocal(tables); setBlob(output); setState('success');
       addHistory({ operation: 'PDF to Excel', sourceName: file.name, outputName: `${safeBaseName(file.name)}.xlsx`, outputSize: output.size }, output);
     } catch (reason) {
       setState('error'); setError(reason instanceof Error ? reason.message : 'Excel export failed.');
     }
   };
-  return <ToolLayout busy={state === 'processing' || state === 'reading'} tool={tool} mode="service" note="Detect ruled and stream tables, review uncertain cells and export a valid Excel workbook.">
-    <ProcessingServiceStatus operation={'pdf-tables'} />
-    <FileDropzone accept={tool.accept} file={file} label="Select a PDF file" hint="Text-based PDF · up to 50 MB" onFiles={(files) => void (async () => { try { setFile(null); setTables([]); setBlob(null); setScanned(false); setState('reading'); await validateFile(files[0], ['pdf']); setFile(files[0]); setTables([]); setBlob(null); setState('idle'); setError(''); } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Invalid PDF.'); } })()} />
+  return <ToolLayout busy={state === 'processing' || state === 'reading'} tool={tool} note="Extract aligned text columns on this device, correct cells and export separate Excel worksheets. Scans need OCR; table structure is estimated.">
+    <FileDropzone accept={tool.accept} file={file} label="Select a PDF file" hint="Text-based PDF · up to 20 MB" onFiles={(files) => void (async () => { try { setFile(null); setTables([]); setBlob(null); setScanned(false); setState('reading'); await validateFile(files[0], ['pdf']); setFile(files[0]); setTables([]); setBlob(null); setState('idle'); setError(''); } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Invalid PDF.'); } })()} />
     {file && tables.length === 0 && state !== 'processing' && <button className="button button--primary button--full tool-action" onClick={() => void analyze()}><ScanText size={19} /> Detect tables</button>}
-    <StatusBanner state={state} error={error} mode="service" />
+    <StatusBanner state={state} error={error} />
+    {state === 'processing' && <p role="status">{progress || 'Creating workbook…'}</p>}
+    {tables.length > 0 && <div className="status-banner status-banner--warning"><span>{warning}</span></div>}
     {scanned && <div className="status-banner status-banner--warning"><AlertTriangle /><span><strong>OCR needed</strong>Convert the scan to a searchable PDF with a trusted OCR tool, then try again.</span></div>}
-    {tables.length > 0 && <section className="table-editor"><div className="table-editor__heading"><div><h3>Review extracted data</h3><p>Yellow cells have unusual row structure. Values export as text to preserve identifiers. Choose column types explicitly; the first row stays as headers. Dates use YYYY-MM-DD.</p></div><span>{tables.length} table{tables.length === 1 ? '' : 's'}</span></div>{tables.map((table, tableIndex) => <div className="detected-table" key={table.id}><h4>Table {tableIndex + 1} · page {table.page}</h4><div className="table-scroll"><table><thead><tr>{Array.from({ length: Math.max(...table.rows.map((row) => row.length)) }, (_, column) => <th key={column}><label>Column {column + 1}<select aria-label={`Table ${tableIndex + 1}, column ${column + 1} type`} value={table.columnTypes?.[column] ?? 'text'} onChange={(event) => updateColumnType(table.id, column, event.target.value as 'text' | 'number' | 'date')}><option value="text">Text (preserve)</option><option value="number">Number</option><option value="date">Date (YYYY-MM-DD)</option></select></label></th>)}</tr></thead><tbody>{table.rows.map((row, rowIndex) => <tr key={`${table.id}-${rowIndex}`}>{row.map((cell, columnIndex) => <td key={`${rowIndex}-${columnIndex}`} className={cell.uncertain ? 'uncertain' : ''}><input aria-label={`Table ${tableIndex + 1}, row ${rowIndex + 1}, column ${columnIndex + 1}`} value={cell.value} onChange={(event) => updateCell(table.id, rowIndex, columnIndex, event.target.value)} /></td>)}</tr>)}</tbody></table></div></div>)}<button className="button button--primary button--full" onClick={() => void exportFile()}><FileSpreadsheet size={19} /> Export Excel workbook</button></section>}
+    {tables.length > 0 && <section className="table-editor"><div className="table-editor__heading"><div><h3>Review extracted data</h3><p>Yellow cells require review; column boundaries are estimated. Only detected multi-column rows are included. Compare against the original. Values export as text to preserve identifiers. Choose column types explicitly; the first row stays as headers. Dates use YYYY-MM-DD.</p></div><span>{tables.length} table{tables.length === 1 ? '' : 's'}</span></div>{tables.map((table, tableIndex) => <div className="detected-table" key={table.id}><h4>Table {tableIndex + 1} · page {table.page}</h4><div className="table-scroll"><table><thead><tr>{Array.from({ length: Math.max(...table.rows.map((row) => row.length)) }, (_, column) => <th key={column}><label>Column {column + 1}<select aria-label={`Table ${tableIndex + 1}, column ${column + 1} type`} value={table.columnTypes?.[column] ?? 'text'} onChange={(event) => updateColumnType(table.id, column, event.target.value as 'text' | 'number' | 'date')}><option value="text">Text (preserve)</option><option value="number">Number</option><option value="date">Date (YYYY-MM-DD)</option></select></label></th>)}</tr></thead><tbody>{table.rows.map((row, rowIndex) => <tr key={`${table.id}-${rowIndex}`}>{row.map((cell, columnIndex) => <td key={`${rowIndex}-${columnIndex}`} className={cell.uncertain ? 'uncertain' : ''}><input aria-label={`Table ${tableIndex + 1}, row ${rowIndex + 1}, column ${columnIndex + 1}`} value={cell.value} onChange={(event) => updateCell(table.id, rowIndex, columnIndex, event.target.value)} /></td>)}</tr>)}</tbody></table></div></div>)}<button className="button button--primary button--full" onClick={() => void exportFile()}><FileSpreadsheet size={19} /> Export Excel workbook</button></section>}
     {blob && file && <ResultCard blob={blob} filename={`${safeBaseName(file.name)}.xlsx`} warning="Table recovery is best-effort. Review formulas, merged cells and column alignment in Excel." />}
   </ToolLayout>;
 }

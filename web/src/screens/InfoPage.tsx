@@ -4,11 +4,11 @@ import { PageHeader } from '../components/PageHeader';
 const content = {
   privacy: {
     title: 'Privacy policy',
-    intro: 'FileFlow keeps lightweight tools on your device and clearly labels operations that need the secure processing service.',
+    intro: 'FileFlow processes documents on your device. Conversion does not require an account, database or processing server.',
     sections: [
-      ['File processing', 'Image tools, scanning and PDF page editing run locally. PDF and Office conversion, PDF compression and table recognition upload a temporary copy to the configured FileFlow worker. Production service URLs must use HTTPS. The worker attempts job workspace cleanup after each request; immediate deletion is not guaranteed.'],
+      ['File processing', 'All tool screens process locally. PDF-to-Word reconstructs editable text and simple tables with approximate layout. PDF-to-Excel estimates aligned text columns for review. Scanned text requires OCR, which is not bundled. Word-to-PDF supports simple text reflow only. Browser PDF compression optimizes structure without recompressing images. Documents are not sent to a conversion service.'],
       ['History', 'Recent activity stores filenames, operation names, dates and output sizes in browser local storage. Output retention is off by default. If enabled in Settings, generated files are kept in this browser using IndexedDB for Save again. Clear recent history removes metadata and requests deletion of retained outputs; browser storage can also be cleared through browser settings.'],
-      ['Network use', 'The app shell may update from its hosting origin. Service conversion does not require an account, permanent document database or public storage URL.']
+      ['Network use', 'The app shell and processing assets load from this site and can be cached for offline use. Optional Supabase account login uses its configured authentication service; tools do not require login. Processing libraries do not upload your files.']
     ]
   },
   terms: {

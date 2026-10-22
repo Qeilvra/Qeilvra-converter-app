@@ -24,7 +24,7 @@ async function tablePdf() {
     page.drawText(row[0], { x: 70, y, size: 13, font, color: rgb(0, 0, 0) });
     page.drawText(row[1], { x: 330, y, size: 13, font, color: rgb(0, 0, 0) });
   });
-  return Buffer.from(await pdf.save());
+  return Buffer.from(await pdf.save({ useObjectStreams: false }));
 }
 
 async function wordFixture() {
@@ -32,46 +32,10 @@ async function wordFixture() {
   return Buffer.from(await Packer.toBuffer(document));
 }
 
-async function mockProcessingApi(page: import('@playwright/test').Page) {
-  // These fixtures verify browser/API contracts, not backend conversion accuracy.
-  await page.route('**/api/v1/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.endsWith('/health/capabilities')) {
-      await route.fulfill({ json: { status: 'ready', operations: ['pdf-to-docx', 'docx-to-pdf', 'pdf-tables', 'pdf-compress'] } });
-      return;
-    }
-    if (path.endsWith('/pdf/tables/xlsx')) {
-      const payload = route.request().postDataJSON() as { tables: Array<{ rows: Array<Array<{ value: string }>>; columnTypes?: string[] }> };
-      const workbook = new ExcelJS.Workbook();
-      payload.tables.forEach((table, index) => {
-        const sheet = workbook.addWorksheet(`Table ${index + 1}`);
-        table.rows.forEach((row, rowIndex) => sheet.addRow(row.map((cell, column) => rowIndex > 0 && table.columnTypes?.[column] === 'number' ? Number(cell.value) : cell.value)));
-      });
-      await route.fulfill({ status: 200, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', body: Buffer.from(await workbook.xlsx.writeBuffer()) });
-      return;
-    }
-    if (path.endsWith('/pdf/tables')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ pageCount: 1, scanned: false, tables: [{ id: 'p1-t1', page: 1, rows: [[{ value: 'Name', uncertain: false }, { value: 'Score', uncertain: false }], [{ value: 'Ayesha', uncertain: false }, { value: '92', uncertain: false }], [{ value: 'Bilal', uncertain: false }, { value: '87', uncertain: false }]] }] }) });
-      return;
-    }
-    if (path.endsWith('/convert/docx-to-pdf')) {
-      await route.fulfill({ status: 200, contentType: 'application/pdf', body: await tablePdf() });
-      return;
-    }
-    if (path.endsWith('/convert/pdf-to-docx')) {
-      await route.fulfill({ status: 200, contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', body: await wordFixture() });
-      return;
-    }
-    if (path.endsWith('/pdf/compress')) {
-      const compressed = await PDFDocument.create(); compressed.addPage([200, 200]);
-      await route.fulfill({ status: 200, contentType: 'application/pdf', headers: { 'Access-Control-Expose-Headers': 'X-FileFlow-Reduced,X-FileFlow-Images-Optimized', 'X-FileFlow-Reduced': 'true', 'X-FileFlow-Images-Optimized': '1' }, body: Buffer.from(await compressed.save()) });
-      return;
-    }
-    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Unmocked processing route' }) });
-  });
-}
-
-test.beforeEach(async ({ page }) => mockProcessingApi(page));
+test.beforeEach(async ({ page }) => {
+  // Local tools must succeed with every conversion endpoint unavailable.
+  await page.route('**/api/v1/**', (route) => route.abort());
+});
 
 test('dashboard routes every tool and remains within a mobile viewport', async ({ page }) => {
   await page.goto('/');
@@ -226,16 +190,15 @@ test('PDF compression, merge, page editing, and split generate parseable outputs
   expect(Object.keys(archive.files)).toContain('page-1.pdf');
 });
 
-test('service errors and HTML fallback never produce a successful download', async ({ page }) => {
-  await page.route('**/api/v1/convert/pdf-to-docx', (route) => route.fulfill({ status: 404, body: 'Not Found' }));
+test('scans and invalid PDF inputs never produce a misleading Word download', async ({ page }) => {
   await page.goto('/tools/pdf-to-word');
-  await page.locator('input[type=file]').setInputFiles({ name: 'source.pdf', mimeType: 'application/pdf', buffer: await tablePdf() });
+  const scan = await PDFDocument.create(); scan.addPage();
+  await page.locator('input[type=file]').setInputFiles({ name: 'scan.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await scan.save()) });
   await page.getByRole('button', { name: 'Convert to DOCX' }).click();
-  await expect(page.getByRole('alert')).toContainText('hosted FileFlow backend');
+  await expect(page.getByRole('alert')).toContainText('OCR');
   await expect(page.getByText('Your file is ready')).toHaveCount(0);
-  await page.route('**/api/v1/convert/pdf-to-docx', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<html>React frontend fallback</html>' }));
-  await page.getByRole('button', { name: 'Convert to DOCX' }).click();
-  await expect(page.getByRole('alert')).toContainText('valid DOCX');
+  await page.locator('input[type=file]').setInputFiles({ name: 'fake.pdf', mimeType: 'application/pdf', buffer: Buffer.from('<html>React frontend fallback</html>') });
+  await expect(page.getByRole('alert')).toContainText('supported format');
   await expect(page.getByText('Your file is ready')).toHaveCount(0);
 });
 

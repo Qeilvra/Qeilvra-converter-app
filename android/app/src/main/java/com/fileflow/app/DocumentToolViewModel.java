@@ -9,7 +9,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.fileflow.app.processing.OfficeOpenXml;
 import com.fileflow.app.processing.PdfProcessor;
-import com.fileflow.app.processing.ProcessingApiClient;
+import com.fileflow.app.processing.LocalDocumentProcessor;
+import com.fileflow.app.processing.LocalPdfCompressor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -38,6 +39,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     @Nullable String previewText;
     @Nullable String sourceName;
     long sourceSize;
+    boolean allowOcr;
     private volatile int generation;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final MutableLiveData<State> state = new MutableLiveData<>(new State(false, null, null));
@@ -79,7 +81,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
         executor.execute(() -> {
             try {
                 String text;
-                if ("pdf-excel".equals(tool)) text = ProcessingApiClient.extractTablesTsv(getApplication().getContentResolver(), source);
+                if ("pdf-excel".equals(tool)) text = LocalDocumentProcessor.extractTables(getApplication().getContentResolver(), source, allowOcr, message -> { if (request == generation) state.postValue(new State(true, null, message)); });
                 else throw new IllegalArgumentException("This conversion does not use a text preview.");
                 if (request != generation) return;
                 previewText = text;
@@ -94,14 +96,14 @@ public final class DocumentToolViewModel extends AndroidViewModel {
         if (uris.isEmpty() || isWorking()) return;
         final int request = ++generation;
         outputBytes = null; outputName = null; outputMime = null;
-        boolean remoteProcess = "pdf-word".equals(tool) || "word-pdf".equals(tool) || "pdf-compress".equals(tool);
-        state.setValue(new State(true, null, remoteProcess ? "Uploading securely for isolated processing…" : "Processing locally…"));
+        state.setValue(new State(true, null, "Processing locally…"));
         executor.execute(() -> {
             try {
                 byte[] bytes;
                 String name;
                 String mime;
                 String base = safeBaseName(sourceName);
+                String detail = "";
                 switch (tool) {
                     case "pdf-excel":
                         bytes = OfficeOpenXml.createXlsxFromTsv(editedText);
@@ -109,18 +111,19 @@ public final class DocumentToolViewModel extends AndroidViewModel {
                         mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                         break;
                     case "pdf-word":
-                        bytes = ProcessingApiClient.pdfToDocx(getApplication().getContentResolver(), uris.get(0));
+                        bytes = LocalDocumentProcessor.pdfToDocx(getApplication().getContentResolver(), uris.get(0), allowOcr, message -> { if (request == generation) state.postValue(new State(true, null, message)); });
                         name = base + ".docx";
                         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                         break;
                     case "word-pdf":
-                        bytes = ProcessingApiClient.docxToPdf(getApplication().getContentResolver(), uris.get(0));
+                        bytes = LocalDocumentProcessor.docxToPdf(getApplication().getContentResolver(), uris.get(0));
                         name = base + ".pdf";
                         mime = "application/pdf";
                         break;
                     case "pdf-compress":
-                        String level = editorAction == 0 ? "LOW" : editorAction == 2 ? "HIGH" : "BALANCED";
-                        bytes = ProcessingApiClient.compressPdf(getApplication().getContentResolver(), uris.get(0), level);
+                        LocalPdfCompressor.Result compressed = LocalPdfCompressor.compress(getApplication().getContentResolver(), uris.get(0), editorAction);
+                        bytes = compressed.bytes;
+                        detail = compressed.reduced ? " · " + compressed.imagesOptimized + " images optimized" : " · No safe reduction found; original retained";
                         name = base + "-optimized.pdf";
                         mime = "application/pdf";
                         break;
@@ -150,7 +153,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
                 if (request != generation) return;
                 outputBytes = bytes; outputName = name; outputMime = mime;
                 HistoryStore.add(getApplication(), operationName(tool, editorAction), name, bytes.length);
-                String ready = "Output ready · " + formatBytes(bytes.length);
+                String ready = "Output ready · " + formatBytes(bytes.length) + detail;
                 state.postValue(new State(false, null, ready));
             } catch (Exception | OutOfMemoryError error) {
                 if (request == generation) state.postValue(new State(false, message(error, "Processing failed."), null));

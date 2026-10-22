@@ -25,6 +25,89 @@ import org.junit.runner.RunWith;
 public final class LocalProcessingTest {
     private final Context context = ApplicationProvider.getApplicationContext();
 
+    @Test public void bundledOcrRecoversEditableScanTextWithoutFlatteningWord() throws Exception {
+        org.junit.Assume.assumeTrue(com.fileflow.app.BuildConfig.BUNDLED_OFFLINE_OCR);
+        File source = File.createTempFile("ocr-test-", ".pdf", context.getCacheDir());
+        Bitmap scan = Bitmap.createBitmap(1200,1600,Bitmap.Config.RGB_565); scan.eraseColor(Color.WHITE);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(scan); android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG); paint.setColor(Color.BLACK); paint.setTextSize(40);
+        canvas.drawText("ID",80,180,paint); canvas.drawText("Value",720,180,paint);
+        canvas.drawText("001234",80,270,paint); canvas.drawText("92",720,270,paint);
+        canvas.drawText("009876",80,360,paint); canvas.drawText("87",720,360,paint);
+        try {
+            try (PDDocument pdf = new PDDocument()) {
+                com.tom_roush.pdfbox.pdmodel.PDPage page = new com.tom_roush.pdfbox.pdmodel.PDPage(); pdf.addPage(page);
+                try (com.tom_roush.pdfbox.pdmodel.PDPageContentStream content = new com.tom_roush.pdfbox.pdmodel.PDPageContentStream(pdf,page)) { content.drawImage(com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(pdf,scan),0,0,612,792); }
+                pdf.save(source);
+            }
+            String tsv = LocalDocumentProcessor.extractTables(context.getContentResolver(),Uri.fromFile(source),true,message -> { });
+            assertTrue(tsv.contains("001234"));
+            byte[] word = LocalDocumentProcessor.pdfToDocx(context.getContentResolver(),Uri.fromFile(source),true,message -> { });
+            String xml = zipText(word,"word/document.xml"); assertTrue(xml.contains("001234")); assertFalse(xml.contains("<w:drawing>"));
+        } finally { scan.recycle(); assertTrue(source.delete()); }
+    }
+
+    @Test public void offlineOfficeRecoveryKeepsEditableTextTablesImagesAndExactIdentifiers() throws Exception {
+        try (PDDocument source = new PDDocument()) {
+            Bitmap bitmap = Bitmap.createBitmap(40, 30, Bitmap.Config.RGB_565); bitmap.eraseColor(Color.BLUE);
+            try {
+                com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject image = com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(source, bitmap);
+                for (int p = 0; p < 2; p++) {
+                    com.tom_roush.pdfbox.pdmodel.PDPage page = new com.tom_roush.pdfbox.pdmodel.PDPage(); source.addPage(page);
+                    try (com.tom_roush.pdfbox.pdmodel.PDPageContentStream content = new com.tom_roush.pdfbox.pdmodel.PDPageContentStream(source, page)) {
+                        String[][] rows = {{"ID", "Value"}, {"001234", "$1,234.50"}, {"12345678901234567890", "=SUM(A1:A2)"}};
+                        for (int r = 0; r < rows.length; r++) for (int c = 0; c < 2; c++) {
+                            content.beginText(); content.setFont(com.tom_roush.pdfbox.pdmodel.font.PDType1Font.HELVETICA, 11); content.newLineAtOffset(c == 0 ? 50 : 330, 700 - r * 26); content.showText(rows[r][c]); content.endText();
+                        }
+                        content.drawImage(image, 50, 450, 40, 30);
+                    }
+                }
+                String tsv = LocalDocumentProcessor.extractTables(source, message -> { });
+                assertTrue(tsv.contains("001234")); assertTrue(tsv.contains("12345678901234567890"));
+                assertEquals(2, TableTsv.parseSheets(tsv).size());
+                byte[] workbook = OfficeOpenXml.createXlsxFromTsv(tsv);
+                byte[] word = LocalDocumentProcessor.pdfToDocx(source, message -> { });
+                OfficeOpenXml.validateDocx(word);
+                String xml = zipText(word, "word/document.xml");
+                assertTrue(xml.contains("001234")); assertTrue(xml.contains("12345678901234567890"));
+                assertTrue(xml.contains("<w:tbl>")); assertTrue(xml.contains("<w:t xml:space=\"preserve\">")); assertTrue(xml.contains("<w:drawing>"));
+                assertNotNull(zipText(word, "word/media/image1.png"));
+                assertTrue(zipText(workbook, "xl/worksheets/sheet1.xml").contains("001234"));
+                assertTrue(zipText(workbook, "xl/worksheets/sheet2.xml").contains("12345678901234567890"));
+            } finally { bitmap.recycle(); }
+        }
+        try (PDDocument scan = new PDDocument()) {
+            scan.addPage(new com.tom_roush.pdfbox.pdmodel.PDPage());
+            assertThrows(java.io.IOException.class, () -> LocalDocumentProcessor.pdfToDocx(scan, message -> { }));
+            assertThrows(java.io.IOException.class, () -> LocalDocumentProcessor.extractTables(scan, message -> { }));
+        }
+    }
+
+    @Test public void offlinePdfCompressionKeepsSelectableTextAndReportsActualReduction() throws Exception {
+        byte[] original;
+        try (PDDocument source = new PDDocument(); java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream()) {
+            com.tom_roush.pdfbox.pdmodel.PDPage page = new com.tom_roush.pdfbox.pdmodel.PDPage(); source.addPage(page);
+            Bitmap bitmap = Bitmap.createBitmap(900, 700, Bitmap.Config.RGB_565);
+            java.util.Random random = new java.util.Random(7);
+            for (int y = 0; y < 700; y++) for (int x = 0; x < 900; x++) bitmap.setPixel(x,y,Color.rgb(random.nextInt(256),random.nextInt(256),random.nextInt(256)));
+            try (com.tom_roush.pdfbox.pdmodel.PDPageContentStream content = new com.tom_roush.pdfbox.pdmodel.PDPageContentStream(source,page)) {
+                content.drawImage(com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(source,bitmap),50,100,450,350);
+                content.beginText(); content.setFont(com.tom_roush.pdfbox.pdmodel.font.PDType1Font.HELVETICA,12); content.newLineAtOffset(50,700); content.showText("Editable text survives compression 001234"); content.endText();
+            } finally { bitmap.recycle(); }
+            source.save(bytes); original = bytes.toByteArray();
+        }
+        LocalPdfCompressor.Result compressed = LocalPdfCompressor.compress(original,1);
+        assertEquals(compressed.bytes.length < original.length, compressed.reduced);
+        try (PDDocument pdf = PDDocument.load(compressed.bytes)) { assertTrue(new com.tom_roush.pdfbox.text.PDFTextStripper().getText(pdf).contains("001234")); }
+    }
+
+    private static String zipText(byte[] bytes, String name) throws Exception {
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(bytes))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) if (name.equals(entry.getName())) return new String(BoundedStreams.read(new NonClosingInputStream(zip), 20_000_000), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        throw new AssertionError("Missing package part " + name);
+    }
+
     @Test public void imageFormatsRoundTripAndPngPreservesTransparency() throws Exception {
         File source = image(120, 80, Bitmap.CompressFormat.PNG, Color.TRANSPARENT);
         try {

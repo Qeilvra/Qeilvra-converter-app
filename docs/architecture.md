@@ -1,5 +1,7 @@
 # Architecture
 
+The [backend-free implementation](backend-free.md) supersedes service-required statements below. Current tool screens run locally; the service architecture remains available as an optional deployment.
+
 ## Processing boundary
 
 | Operation | Execution | Engine |

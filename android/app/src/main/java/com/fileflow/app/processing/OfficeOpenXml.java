@@ -174,13 +174,13 @@ public final class OfficeOpenXml {
         return name.toString();
     }
 
-    private static void put(ZipOutputStream zip, String name, String content) throws IOException {
+    static void put(ZipOutputStream zip, String name, String content) throws IOException {
         zip.putNextEntry(new ZipEntry(name));
         zip.write(content.getBytes(StandardCharsets.UTF_8));
         zip.closeEntry();
     }
 
-    private static String escapeXml(String value) throws IOException {
+    static String escapeXml(String value) throws IOException {
         StringBuilder escaped = new StringBuilder(value.length());
         for (int index = 0; index < value.length(); index++) {
             char character = value.charAt(index);

@@ -28,7 +28,7 @@ export default defineConfig({
       manifest: {
         name: 'FileFlow — File tools that respect your privacy',
         short_name: 'FileFlow',
-        description: 'Local file tools plus secure high-fidelity document conversion.',
+        description: 'Local document conversion, image tools and PDF editing. No account required.',
         theme_color: '#f2f7ff',
         background_color: '#f2f7ff',
         display: 'standalone',
@@ -39,7 +39,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,txt}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024

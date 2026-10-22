@@ -5,6 +5,7 @@ plugins {
 def releaseSigningConfigured = ['FILEFLOW_KEYSTORE_PATH', 'FILEFLOW_KEYSTORE_PASSWORD', 'FILEFLOW_KEY_ALIAS', 'FILEFLOW_KEY_PASSWORD']
         .every { System.getenv(it) }
 def processingApiUrl = providers.gradleProperty('fileflowProcessingApiUrl').orElse(System.getenv('FILEFLOW_PROCESSING_API_URL') ?: '').get()
+def bundledOfflineOcr = providers.gradleProperty('fileflowOfflineOcr').orElse('false').get().toBoolean()
 
 android {
     namespace 'com.fileflow.app'
@@ -19,6 +20,7 @@ android {
         versionName '0.1.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'String', 'PROCESSING_API_URL', '"' + processingApiUrl.replace('\\', '\\\\').replace('"', '\\"') + '"'
+        buildConfigField 'boolean', 'BUNDLED_OFFLINE_OCR', bundledOfflineOcr.toString()
     }
 
     signingConfigs {
@@ -46,6 +48,7 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures { buildConfig true }
+    sourceSets.main.java.srcDirs += bundledOfflineOcr ? 'src/offlineOcr/java' : 'src/noOcr/java'
 }
 
 dependencies {
@@ -55,6 +58,8 @@ dependencies {
     implementation 'androidx.exifinterface:exifinterface:1.4.2'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+    // Bundled Latin recognition model: available without a runtime model download.
+    if (bundledOfflineOcr) implementation 'com.google.mlkit:text-recognition:16.0.1'
     implementation 'com.google.android.gms:play-services-ads:25.5.0'
     implementation 'com.google.android.ump:user-messaging-platform:4.0.0'
 

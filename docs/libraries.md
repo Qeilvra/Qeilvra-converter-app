@@ -13,7 +13,7 @@
 | Adobe PDF Services | Commercial cloud service | Candidate PDF export/OCR service with Java SDK. Requires credentials, regional/data-processing approval, network egress, and usage cost. |
 | OpenCV | Apache-2.0 | Evaluated for scanning. Not added because the implemented edge/homography pipeline avoids NDK/WASM size; adopt if the scanner corpus fails. |
 
-Web dependencies retain their previous permissive choices: pdf-lib (MIT), PDF.js (Apache-2.0), jsPDF (MIT), ExcelJS (MIT), JSZip under MIT, React (MIT), and Lucide (ISC). `docx` and ExcelJS remain development/E2E fixture dependencies even though high-fidelity document conversion no longer uses browser text extraction.
+Web dependencies retain their permissive choices: pdf-lib (MIT), PDF.js (Apache-2.0), jsPDF (MIT), ExcelJS (MIT), JSZip under MIT, React (MIT), and Lucide (ISC). The backend-free implementation promotes `docx` and ExcelJS to lazy runtime dependencies and adds PDF.js with a same-origin worker. See [current decisions](backend-free.md) for quality limits and the optional bundled native ML Kit Latin OCR build. The default Android build excludes the OCR dependency/model; ML Kit uses Google SDK/model terms rather than an open-source license.
 
 Licenses must be rechecked from the resolved release during every dependency upgrade. Commercial SDKs must not be added in trial mode or committed with license keys.
 

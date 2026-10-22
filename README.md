@@ -1,6 +1,8 @@
 # FileFlow
 
-FileFlow is a hybrid document-processing application with a React/TypeScript PWA, a native Java Android client, and an isolated Spring Boot processing service. Lightweight image, scanning, and PDF page operations stay on the device. Layout-sensitive Office conversion, PDF image recompression, and table recognition use the configured service and are labelled as remote in both clients.
+FileFlow has a React/TypeScript PWA and a native Java/XML Android app. Tool screens now process files on-device without login, a database, conversion API, or Spring Boot. Editable PDF-to-Word reconstruction and PDF-to-Excel extraction have explicit quality limits and preserve the existing review/export workflows. The Spring Boot implementation remains in the repository as an optional service.
+
+Read the [backend-free investigation and actual verification](docs/backend-free.md) for feature coverage, supported inputs, licenses, output examples, optional Android OCR, and remaining device checks. Exact Word layout fidelity is not claimed.
 
 ## Repository
 
@@ -12,13 +14,7 @@ FileFlow is a hybrid document-processing application with a React/TypeScript PWA
 
 ## Run
 
-Start the processing service (Docker Desktop or another Docker engine must be running):
-
-```bash
-docker compose up --build processing
-```
-
-Start the web app:
+Start the web app; no worker is needed:
 
 ```bash
 cd web
@@ -26,11 +22,11 @@ npm ci
 npm run dev
 ```
 
-Copy `web/.env.example` to `web/.env.local` and set `VITE_SUPABASE_URL` plus `VITE_SUPABASE_PUBLISHABLE_KEY` from the Supabase project Connect panel. FileFlow uses Supabase email/password authentication with persisted browser sessions and local-device logout. Never put a Supabase service-role key in the web environment.
+Leave environment variables unset for account-free local tools. Supabase email/password authentication remains optional; configure its public URL/key only if accounts are wanted. Never put a service-role key in the web environment.
 
-Vite proxies are not configured automatically in production. Set `VITE_PROCESSING_API_URL` to the HTTPS API ending in `/api/v1`, or reverse-proxy `/api/v1` to the service.
+For Android, run `android/gradlew.bat assembleDebug`. The default build omits OCR models to keep the app smaller. Build with `-PfileflowOfflineOcr=true` to include offline Latin OCR for scanned pages. Neither build requires Vercel or a processing URL. Android SDK/JDK and Gradle dependencies are needed at build time.
 
-For Android, set `fileflowProcessingApiUrl=https://host/api/v1` in a user-level Gradle property or define `FILEFLOW_PROCESSING_API_URL`, then run `android/gradlew.bat assembleDebug`.
+The optional worker can still be started with `docker compose up --build processing`. Its API clients and verification scripts remain available for explicitly remote workflows. Current tool screens never upload or automatically fall back to `/api/v1`. Operating that worker is a separate choice; it is unnecessary for the default app.
 
 ## Verification
 
@@ -41,7 +37,11 @@ npm test -- --run
 npm run test:e2e
 npm run build
 
-cd ../server
+# Actual production PWA, network disabled after installation
+cd ..
+node scripts/verify-offline-web.mjs
+
+cd server
 mvn test
 ```
 
@@ -49,7 +49,7 @@ See [deployment](docs/deployment.md), [quality benchmark status](docs/quality-be
 
 ## Audit and live verification
 
-The [October 22 repair record](docs/audit-2026-10-22.md) contains the feature/problem/fix/file/test matrix and remaining release gates. The [hosting decision](docs/hosting-options.md) explains the confirmed Vercel 404s and no-card development options. A frontend-only Vercel build does not start the Java worker.
+The [October 22 repair record](docs/audit-2026-10-22.md) describes the earlier service architecture and fixes. The [backend-free report](docs/backend-free.md) supersedes its backend-requirement statements. A frontend-only Vercel build does not start the optional Java worker; local tools do not need it. No production deployment has been performed by this change.
 
 With the real worker running and web test dependencies installed:
 

@@ -30,7 +30,7 @@ export const tools: ToolDefinition[] = [
   { id: 'image-to-pdf', name: 'Image to PDF', shortName: 'Image to PDF', description: 'JPG, PNG, WebP to PDF', Icon: Images, color: 'purple', accept: 'image/jpeg,image/png,image/webp' },
   { id: 'image-converter', name: 'Image Converter', shortName: 'Image Convert', description: 'Change image format', Icon: FileImage, color: 'cyan', accept: 'image/jpeg,image/png,image/webp' },
   { id: 'compress-image', name: 'Image Compressor', shortName: 'Compress Image', description: 'Reach a target file size', Icon: ImageDown, color: 'green', accept: 'image/jpeg,image/png,image/webp' },
-  { id: 'compress-pdf', name: 'PDF Compressor', shortName: 'Compress PDF', description: 'Recompress embedded images', Icon: FileArchive, color: 'green', accept: '.pdf,application/pdf' },
+  { id: 'compress-pdf', name: 'PDF Compressor', shortName: 'Compress PDF', description: 'Optimize PDF structure locally', Icon: FileArchive, color: 'green', accept: '.pdf,application/pdf' },
   { id: 'scanner', name: 'Document Scanner', shortName: 'Scan Document', description: 'Detect, straighten and enhance', Icon: ScanLine, color: 'orange', accept: 'image/*' },
   { id: 'pdf-editor', name: 'PDF Editor', shortName: 'PDF Editor', description: 'Merge, split and rotate', Icon: FilePenLine, color: 'blue', accept: '.pdf,application/pdf' },
   { id: 'prepare-upload', name: 'Prepare for Upload', shortName: 'Prepare Upload', description: 'Size and format for forms', Icon: UploadCloud, color: 'purple', accept: 'image/jpeg,image/png,image/webp' }

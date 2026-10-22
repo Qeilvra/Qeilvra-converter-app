@@ -66,13 +66,27 @@ public final class DocumentToolActivity extends AppCompatActivity {
         status = findViewById(R.id.textStatus);
         previewLayout = findViewById(R.id.previewLayout);
         preview = findViewById(R.id.inputPreview);
+        preview.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence value, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence value, int start, int before, int count) { }
+            @Override public void afterTextChanged(android.text.Editable value) {
+                if (preview.getTag() != null && !model.isWorking()) { model.previewText = value.toString(); invalidateOutput(); }
+            }
+        });
         actionSpinner = findViewById(R.id.spinnerAction);
         progress = findViewById(R.id.progress);
         processButton = findViewById(R.id.buttonProcess);
         resultActions = findViewById(R.id.resultActions);
         pageContainer = findViewById(R.id.pageContainer);
         configure(title, description);
-        ((TextView) findViewById(R.id.textPrivacy)).setText(usesRemoteService() ? R.string.privacy_secure_service : R.string.privacy_local_pdf);
+        com.google.android.material.checkbox.MaterialCheckBox ocr = findViewById(R.id.checkOfflineOcr);
+        ocr.setVisibility(BuildConfig.BUNDLED_OFFLINE_OCR && ("pdf-word".equals(tool) || "pdf-excel".equals(tool)) ? View.VISIBLE : View.GONE);
+        ocr.setChecked(model.allowOcr);
+        ocr.setOnCheckedChangeListener((button, checked) -> {
+            model.allowOcr = checked; invalidateOutput();
+            if (needsPreview() && !model.uris.isEmpty()) { model.previewText = null; preview.setTag(null); preview.setText(""); model.preparePreview(tool); }
+        });
+        ((TextView) findViewById(R.id.textPrivacy)).setText(R.string.privacy_local_pdf);
 
         findViewById(R.id.buttonBack).setOnClickListener(view -> finish());
         findViewById(R.id.buttonChoose).setOnClickListener(view -> choose());
@@ -165,6 +179,7 @@ public final class DocumentToolActivity extends AppCompatActivity {
         findViewById(R.id.buttonChoose).setEnabled(!state.working);
         actionSpinner.setEnabled(!state.working);
         preview.setEnabled(!state.working);
+        findViewById(R.id.checkOfflineOcr).setEnabled(!state.working);
         processButton.setEnabled(!state.working && !model.uris.isEmpty() && (!needsPreview() || model.previewText != null));
         if (state.error != null) status.setText(state.error);
         else if (state.message != null) status.setText(state.message);
@@ -241,7 +256,6 @@ public final class DocumentToolActivity extends AppCompatActivity {
     }
 
     private boolean needsPreview() { return "pdf-excel".equals(tool); }
-    private boolean usesRemoteService() { return "pdf-excel".equals(tool) || "pdf-word".equals(tool) || "word-pdf".equals(tool) || "pdf-compress".equals(tool); }
     private static boolean isKnownTool(String value) { return "pdf-excel".equals(value) || "pdf-word".equals(value) || "word-pdf".equals(value) || "pdf-compress".equals(value) || "pdf-editor".equals(value); }
     private static String formatBytes(long bytes) { if (bytes < 1024) return bytes + " B"; if (bytes < 1024 * 1024) return String.format(Locale.getDefault(), "%.1f KB", bytes / 1024f); return String.format(Locale.getDefault(), "%.1f MB", bytes / (1024f * 1024f)); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

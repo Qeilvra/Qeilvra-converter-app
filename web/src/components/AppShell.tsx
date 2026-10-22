@@ -46,7 +46,7 @@ export function AppShell() {
         <div className="privacy-note">
           <span className="privacy-note__dot" />
           <strong>Private by design</strong>
-          <p>Local when practical; secure service when fidelity requires it.</p>
+          <p>Process files on your device. No account required.</p>
         </div>
       </aside>
       <main className="app-main"><Outlet /></main>
