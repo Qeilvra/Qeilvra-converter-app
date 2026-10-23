@@ -20,3 +20,4 @@ target/
 test-results/
 web/test-results/
 web/.pdf-word-benchmark/
+web/public/office-runtime/

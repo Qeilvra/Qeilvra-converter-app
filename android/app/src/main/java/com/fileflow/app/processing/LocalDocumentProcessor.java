@@ -171,6 +171,12 @@ public final class LocalDocumentProcessor {
         @Override public void shadingFill(com.tom_roush.pdfbox.cos.COSName name) { }
     }
     public static byte[] docxToPdf(ContentResolver resolver, Uri uri) throws Exception {
+        // This API promises a document conversion, so it must never call text reflow.
+        throw new IOException("This Android build has no embedded DOCX layout renderer. Open the original in an installed office app and export PDF, or explicitly choose plain text export. No PDF was created.");
+    }
+
+    /** Deliberately lossy legacy export. Only an explicit plain-text action may call it. */
+    public static byte[] exportDocxTextToPdf(ContentResolver resolver, Uri uri) throws Exception {
         byte[] source = input(resolver, uri);
         // Explicit text-only mode: reject objects that would otherwise be silently lost.
         try (java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(new ByteArrayInputStream(source))) {

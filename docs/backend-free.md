@@ -1,5 +1,7 @@
 # FileFlow backend-free investigation and implementation
 
+**Word-to-PDF update:** the newer [office rendering implementation](word-to-pdf-rendering.md) supersedes this report's Word-to-PDF paths. The browser can use a locally packaged LibreOffice WASM engine; Android still lacks an embedded DOCX renderer. The older text exporters remain available only as explicit lossy exports. The results below describe the earlier audit.
+
 Date: October 22, 2026, Asia/Karachi. This report supersedes backend-requirement statements in the previous audit, architecture, deployment and hosting documents. Those documents remain as the history and operating instructions for the optional service.
 
 ## Result and scope

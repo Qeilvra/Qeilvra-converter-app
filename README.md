@@ -1,12 +1,14 @@
 # FileFlow
 
-FileFlow has a React/TypeScript PWA and a native Java/XML Android app. Local tools process files on-device without login, a database, conversion API, or Spring Boot. Editable PDF-to-Word reconstruction and PDF-to-Excel extraction have explicit quality limits. Native Word-to-PDF offers an installed office-app handoff; basic text export remains available. A configured office-rendering service is optional and requires an explicit user choice before uploading a document.
+FileFlow has a React/TypeScript PWA and a native Java/XML Android app. Local tools process files on-device without login, a database, conversion API, or Spring Boot. Browser Word-to-PDF now uses an optionally packaged LibreOffice WebAssembly renderer; a missing renderer fails explicitly. Native Android has no embedded DOCX layout engine and offers an installed office-app handoff. Basic text export is a separate, explicitly selected operation. A configured office-rendering service remains optional and requires a user choice before uploading a document.
 
 Read the [backend-free investigation and actual verification](docs/backend-free.md) for feature coverage, supported inputs, licenses, output examples, optional Android OCR, and remaining device checks. Exact Word layout fidelity is not claimed.
 
 The [professional conversion investigation](docs/professional-conversion-research.md) records current engine/API research, real before-and-after renderings, merged-table improvements, office-renderer integration, measured limitations and remaining Android device checks. It supersedes earlier descriptions of the Word conversion paths.
 
 ## Repository
+
+The newer [Word rendering implementation and measured comparisons](docs/word-to-pdf-rendering.md) supersedes the earlier reports' Word-to-PDF paths. It covers the actual offline browser button, font handling, Android blockers, memory cost and runtime redistribution limitations. Native Android document rendering is not solved.
 
 - `web/` — React, TypeScript, Vite, PWA, local image/PDF tools, and processing API client
 - `android/` — native Java/XML application with local tools and the same processing API
@@ -26,9 +28,11 @@ npm run dev
 
 Leave environment variables unset for account-free local tools. Supabase email/password authentication remains optional; configure its public URL/key only if accounts are wanted. Never put a service-role key in the web environment.
 
+For the browser's local office-rendering experiment, explicitly run `npm run setup:office` in `web/` before starting/building. This downloads about 250 MiB of public engine assets into an ignored directory, with reviewed SHA-256 checks. It is never run by install/build automatically. Matching local TTF/OTF files can improve font fidelity; none are uploaded. The tested engine reserves 1 GiB of WebAssembly memory and is unsuitable for low-memory devices. Read [runtime notices](docs/office-runtime-notices.md) before distributing those generated assets; a complete redistributable release package has not been assembled.
+
 For Android, run `android/gradlew.bat assembleDebug`. The default build omits OCR models to keep the app smaller. Build with `-PfileflowOfflineOcr=true` to include offline Latin OCR for scanned pages. Neither build requires Vercel or a processing URL. Android SDK/JDK and Gradle dependencies are needed at build time.
 
-The optional worker can still be started with `docker compose up --build processing`. Its API clients and verification scripts remain available for explicitly remote workflows. Current tool screens never upload or automatically fall back to `/api/v1`. Operating that worker is a separate choice; it is unnecessary for the default app.
+The optional worker can still be started with `docker compose up --build processing`. Its API clients and verification scripts remain available for explicitly remote workflows. Word-to-PDF uploads only after selecting the configured service; local rendering never falls back to an upload or text export. Operating that worker is a separate choice; it is unnecessary for local tools.
 
 ## Verification
 

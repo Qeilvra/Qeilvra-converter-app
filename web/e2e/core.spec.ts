@@ -80,6 +80,7 @@ test('PDF to Excel accepts a real PDF, exposes editable cells, and downloads a v
 
 test('Word to PDF and image conversion produce genuine downloadable formats', async ({ page }) => {
   await page.goto('/tools/word-to-pdf');
+  await page.getByRole('checkbox', { name: 'Export basic text only (discard document layout)' }).check();
   await page.locator('input[type=file]').setInputFiles({
     name: 'fixture.docx',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

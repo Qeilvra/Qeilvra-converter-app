@@ -25,7 +25,7 @@ try {
     await page.goto('http://127.0.0.1:4183/tools/word-to-pdf');
     const choice = page.getByRole('checkbox', { name: /Use configured office renderer/ });
     assert.equal(await choice.isChecked(), false);
-    await page.locator('input[type=file]').setInputFiles(resolve(root, 'sources', name + '.docx'));
+    await page.locator('.dropzone input[type=file]').setInputFiles(resolve(root, 'sources', name + '.docx'));
     assert.deepEqual(uploads, []); await choice.check(); assert.deepEqual(uploads, []);
     await page.screenshot({ path: resolve(output, name + '-before.png'), fullPage: true });
     const start = performance.now(); await page.getByRole('button', { name: 'Convert to PDF', exact: true }).click();
@@ -40,7 +40,7 @@ try {
   // An unavailable service must never silently produce a plain-text PDF.
   const page = await browser.newPage(); await page.route('**/convert/docx-to-pdf', route => route.abort());
   await page.goto('http://127.0.0.1:4183/tools/word-to-pdf');
-  await page.locator('input[type=file]').setInputFiles(resolve(root, 'sources/office-report.docx'));
+  await page.locator('.dropzone input[type=file]').setInputFiles(resolve(root, 'sources/office-report.docx'));
   await page.getByRole('checkbox', { name: /Use configured office renderer/ }).check();
   await page.getByRole('button', { name: 'Convert to PDF', exact: true }).click();
   await page.getByRole('alert').waitFor(); assert.equal(await page.getByText('Your file is ready').count(), 0);

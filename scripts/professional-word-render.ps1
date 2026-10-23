@@ -1,6 +1,6 @@
-param([string]$Phase = 'browser-after', [switch]$ImportPdf, [string]$Filter = '')
+param([string]$Phase = 'browser-after', [switch]$ImportPdf, [string]$Filter = '', [string]$RootDirectory = '.tools/professional-conversion')
 $ErrorActionPreference = 'Stop'
-$root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../.tools/professional-conversion'))
+$root = [IO.Path]::GetFullPath((Join-Path (Join-Path $PSScriptRoot '..') $RootDirectory))
 $env:TEMP = Join-Path $root 'temp'
 $env:TMP = $env:TEMP
 [void][IO.Directory]::CreateDirectory($env:TEMP)

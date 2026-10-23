@@ -121,8 +121,11 @@ public final class DocumentToolViewModel extends AndroidViewModel {
                         if (editorAction == 2) {
                             if (BuildConfig.PROCESSING_API_URL.trim().isEmpty()) throw new IllegalArgumentException("No office rendering service is configured.");
                             bytes = com.fileflow.app.processing.ProcessingApiClient.docxToPdf(getApplication().getContentResolver(), uris.get(0));
-                        } else bytes = LocalDocumentProcessor.docxToPdf(getApplication().getContentResolver(), uris.get(0));
-                        name = base + ".pdf";
+                        } else if (editorAction == 1) {
+                            bytes = LocalDocumentProcessor.exportDocxTextToPdf(getApplication().getContentResolver(), uris.get(0));
+                            detail = " · Plain text only; original document layout discarded";
+                        } else throw new IllegalArgumentException("Select an available office renderer. No text-only fallback was used.");
+                        name = base + (editorAction == 1 ? "-text-only.pdf" : ".pdf");
                         mime = "application/pdf";
                         break;
                     case "pdf-compress":
@@ -176,7 +179,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     private static String operationName(String tool, int editorAction) {
         if ("pdf-excel".equals(tool)) return "PDF to Excel";
         if ("pdf-word".equals(tool)) return "PDF to Word";
-        if ("word-pdf".equals(tool)) return "Word to PDF";
+        if ("word-pdf".equals(tool)) return editorAction == 1 ? "Word text export (layout discarded)" : "Word to PDF";
         if ("pdf-compress".equals(tool)) return "PDF compression";
         if (editorAction == 0) return "Edit PDF pages";
         if (editorAction == 1) return "Merge PDFs";

@@ -86,7 +86,8 @@
     <string name="no_recent_activity">No recent activity.</string>
     <string name="description_pdf_excel">Extract aligned multi-column rows locally, correct the quoted tab-separated preview, then export separate worksheets. Compare with the original: table structure is estimated and merged or multiline cells may need correction. All values stay as text to protect IDs, dates and currency. Scans need OCR. Limit: 20 MB, 100 pages.</string>
     <string name="description_pdf_word">Reconstruct editable paragraphs, headings, columns, ruled tables with rectangular merged cells, and positioned images locally. Page dimensions and inferred headers or footers are retained. Fonts may be substituted; complex artwork and substantial editing may change layout. Review the output. Scans need OCR. Limit: 20 MB, 100 pages.</string>
-    <string name="description_word_pdf">For accurate layout, open the DOCX in an installed office app and choose Export as PDF. Collabora Office offers an offline option. Basic text PDF export remains available, but loses fonts, styling and pagination and rejects complex documents. Limit for basic export: 20 MB, 100 pages.</string>
+    <string name="description_word_pdf">This Android build has no embedded Word layout renderer. To preserve document formatting offline, open the original DOCX in an installed office app with PDF export. FileFlow cannot automatically receive its output. The separate basic text exporter discards layout; it is not accurate document conversion.</string>
+    <string name="word_pdf_permission_lost">The office app cannot access this document. Select the DOCX again to renew read access. No PDF was generated.</string>
     <string name="word_pdf_office_app">Installed office app — export PDF there</string>
     <string name="word_pdf_basic">Basic text PDF — formatting lost</string>
     <string name="word_pdf_service">Configured office renderer — uploads file</string>

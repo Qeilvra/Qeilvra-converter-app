@@ -155,10 +155,12 @@ public final class DocumentToolActivity extends AppCompatActivity {
         Intent intent = new Intent(Intent.ACTION_VIEW).setDataAndType(model.uris.get(0), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setClipData(android.content.ClipData.newRawUri("Word document", model.uris.get(0)));
+        if (intent.resolveActivity(getPackageManager()) == null) { status.setText(R.string.word_pdf_no_office_app); return; }
         try {
             startActivity(Intent.createChooser(intent, getString(R.string.word_pdf_open_app)));
             status.setText(R.string.word_pdf_export_instructions);
         } catch (android.content.ActivityNotFoundException missing) { status.setText(R.string.word_pdf_no_office_app); }
+        catch (SecurityException denied) { status.setText(R.string.word_pdf_permission_lost); }
     }
 
     private void acceptSelection(List<Uri> selected) {
