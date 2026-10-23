@@ -1,4 +1,6 @@
-import { ZetaHelperThread } from '/office-runtime/zetaHelper.js';
+// Build preparation packages this module beside its pinned helper and WASM.
+// Relative imports keep every worker on the same runtime version offline too.
+import { ZetaHelperThread } from './zetaHelper.js';
 const helper = new ZetaHelperThread();
 const { css, zetajs } = helper;
 const property = (Name, Value) => new css.beans.PropertyValue({ Name, Value });

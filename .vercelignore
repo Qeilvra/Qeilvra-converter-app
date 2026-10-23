@@ -1,0 +1,11 @@
+# This Vercel project builds web/. Keep local fixtures, generated engines,
+# Android/Java builds, caches and private documents out of CLI source uploads.
+/*
+!/web/
+/web/node_modules/
+/web/dist/
+/web/public/office-runtime/
+/web/test-results/
+/web/.pdf-word-benchmark/
+/web/.env*
+!/web/.env.example

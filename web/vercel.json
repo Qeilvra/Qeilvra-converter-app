@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
+    { "source": "/((?!api(?:/|$)|office-runtime(?:/|$)|office-renderer(?:/|$)|assets(?:/|$)).*)", "destination": "/index.html" }
   ],
   "headers": [
     { "source": "/(.*)", "headers": [
@@ -11,6 +11,17 @@
       { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
       { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
       { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+    ] },
+    { "source": "/office-runtime/manifest.json", "headers": [
+      { "key": "Content-Type", "value": "application/json; charset=utf-8" },
+      { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+    ] },
+    { "source": "/office-runtime/:version/:asset.gzip", "headers": [
+      { "key": "Content-Type", "value": "application/gzip" },
+      { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+    ] },
+    { "source": "/office-runtime/:version/soffice.data.js.metadata", "headers": [
+      { "key": "Content-Type", "value": "application/json; charset=utf-8" }
     ] }
   ]
 }

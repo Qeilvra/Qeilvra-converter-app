@@ -42,13 +42,15 @@ export function DocumentConverter({ tool, direction }: { tool: ToolDefinition; d
   };
   return <ToolLayout busy={state === 'processing' || state === 'reading'} tool={tool} mode={officeService && !isPdf ? 'service' : 'local'} note={isPdf ? 'Create an editable Word document on this device.' : officeService ? 'Render with your configured office service.' : basicText ? 'Export plain text with basic pagination.' : 'Render the original Word layout on this device.'}>
     <div className="status-banner status-banner--warning"><span><strong>{!isPdf && officeService ? 'Office rendering' : 'Local conversion limits'}</strong>{limitation}</span></div>
-    {!isPdf && configuredOfficeService && <label><input type="checkbox" checked={officeService} disabled={state === 'processing'} onChange={event => { setOfficeService(event.target.checked); setBasicText(false); setBlob(null); setState('idle'); }} /> Use configured office renderer (uploads this file to {configuredOfficeService})</label>}
-    {!isPdf && <label><input type="checkbox" checked={basicText} onChange={event => { setBasicText(event.target.checked); setOfficeService(false); setBlob(null); setState('idle'); }} /> Export basic text only (discard document layout)</label>}
-    {!isPdf && !officeService && !basicText && <label>Matching fonts (optional, stay on this device)<input aria-label="Matching local fonts" type="file" accept=".ttf,.otf" multiple onChange={event => { setFonts(Array.from(event.target.files ?? [])); setBlob(null); setState('idle'); }} /></label>}
+    {!isPdf && <div className="office-options">
+      {configuredOfficeService && <label className="office-choice"><input type="checkbox" checked={officeService} disabled={state === 'processing'} onChange={event => { setOfficeService(event.target.checked); setBasicText(false); setBlob(null); setState('idle'); }} /><span>Use configured office renderer (uploads this file to {configuredOfficeService})</span></label>}
+      <label className="office-choice"><input type="checkbox" checked={basicText} onChange={event => { setBasicText(event.target.checked); setOfficeService(false); setBlob(null); setState('idle'); }} /><span>Export basic text only (discard document layout)</span></label>
+      {!officeService && !basicText && <label className="office-fonts"><span>Matching fonts <small>(optional, stay on this device)</small></span><input aria-label="Matching local fonts" type="file" accept=".ttf,.otf" multiple onChange={event => { setFonts(Array.from(event.target.files ?? [])); setBlob(null); setState('idle'); }} /></label>}
+    </div>}
     <FileDropzone accept={tool.accept} file={file} label={`Select a ${isPdf ? 'PDF' : 'Word'} file`} hint={`${isPdf ? 'PDF' : 'DOCX'} · up to 20 MB`} onFiles={(files) => void (async () => { try { setFile(null); setBlob(null); setState('reading'); await validateFile(files[0], [isPdf ? 'pdf' : 'docx']); setFile(files[0]); setBlob(null); setState('idle'); } catch (reason) { setState('error'); setError(reason instanceof Error ? reason.message : 'Unsupported file.'); } })()} />
     {file && <button className="button button--primary button--full tool-action" onClick={() => void run()}><FileOutput size={19} /> {!isPdf && basicText ? 'Export basic text PDF' : `Convert to ${ext.toUpperCase()}`}</button>}
     <StatusBanner state={state} error={error} />
-    {state === 'processing' && <p role="status">{progress || 'Creating PDF on this device…'}</p>}
+    {state === 'processing' && <p className="office-progress" role="status" aria-live="polite">{progress || 'Creating PDF on this device…'}</p>}
     {blob && file && <ResultCard blob={blob} filename={outputName} warning={limitation} />}
   </ToolLayout>;
 }

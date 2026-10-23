@@ -10,7 +10,7 @@ test('normal Word conversion never silently falls back when the office runtime i
   const source=await Packer.toBuffer(new Document({sections:[{children:[new Paragraph({text:'Preserve authored layout',heading:'Heading1'}),new Table({rows:[new TableRow({children:[new TableCell({children:[new Paragraph('Required table')]})]})]})]}]}));
   await page.locator('.dropzone input[type=file]').setInputFiles({name:'formatted.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:source});
   await page.getByRole('button',{name:'Convert to PDF',exact:true}).click();
-  await expect(page.getByRole('alert')).toContainText('not packaged');
+  await expect(page.getByRole('alert')).toContainText('missing from this deployment');
   await expect(page.getByText('Your file is ready')).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Save',exact:true})).toHaveCount(0);
   expect(uploads).toEqual([]);

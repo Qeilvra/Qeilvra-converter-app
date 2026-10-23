@@ -1,5 +1,6 @@
 {
   "engine": "LibreOffice WASM",
+  "engineBuild": "efaf0670b4d055f838a2849becb10f08aa06a257",
   "reviewed": "2026-10-23",
   "wrapperSource": "https://github.com/allotropia/zetajs/tree/b3dec98af5dc4c059a260afd6db0bf0fe38c6384",
   "files": [

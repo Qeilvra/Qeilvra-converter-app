@@ -10,7 +10,8 @@ export async function renderDocxOffline(file: File, fonts: File[] = [], progress
   const manifestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000);
   const manifest = await fetch('/office-runtime/manifest.json', { signal:manifestSignal, credentials: 'omit' });
   const config: unknown = manifest.ok && manifest.headers.get('content-type')?.includes('application/json') ? await manifest.json() : null;
-  if (!config || typeof config !== 'object' || !('engine' in config) || config.engine !== 'LibreOffice WASM') throw new Error('The offline office engine is not packaged in this FileFlow build. Use an installed office app to export PDF. The developer can install the local runtime using the documented setup command. No text-only PDF was created.');
+  if (!config || typeof config !== 'object' || !('engine' in config) || config.engine !== 'LibreOffice WASM') throw new Error('The offline office engine is missing from this deployment. Please reload after the site is updated. No text-only PDF was created.');
+  if (!('format' in config) || config.format !== 'fileflow-office-gzip-v2') throw new Error('The cached office package is outdated. Reload FileFlow to install the current version. No text-only PDF was created.');
   const source = await file.arrayBuffer();
   const fontData = await Promise.all(fonts.map(async (font, i) => ({ name: `font-${i}.${font.name.toLowerCase().endsWith('.otf') ? 'otf' : 'ttf'}`, bytes: await font.arrayBuffer() })));
   signal?.throwIfAborted();
@@ -34,9 +35,10 @@ export async function renderDocxOffline(file: File, fonts: File[] = [], progress
       if (event.data.type === 'bootstrap' && !initialized) {
         initialized = true;
         progress?.('Loading LibreOffice on this device…');
-        frame.contentWindow!.postMessage({ type: 'render', id, source, fonts: fontData }, location.origin, [source, ...fontData.map(f => f.bytes)]);
+        frame.contentWindow!.postMessage({ type: 'render', id, source, fonts: fontData, runtime:config }, location.origin, [source, ...fontData.map(f => f.bytes)]);
       } else if (event.data.id === id) {
-        if (event.data.type === 'laying-out') progress?.('Rendering the original Word document layout…');
+        if (event.data.type === 'progress' && typeof event.data.message === 'string') progress?.(event.data.message.slice(0,300));
+        else if (event.data.type === 'laying-out') progress?.('Rendering the original Word document layout…');
         else if (event.data.type === 'error') fail(new Error(`Office rendering failed: ${String(event.data.message).slice(0, 500)} No text-only fallback was used.`));
         else if (event.data.type === 'pdf') {
           const bytes: unknown = event.data.bytes;

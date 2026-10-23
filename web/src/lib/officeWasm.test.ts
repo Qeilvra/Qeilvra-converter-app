@@ -14,7 +14,7 @@ it('rejects an HTML SPA fallback as a missing runtime before reading source byte
   vi.stubGlobal('crossOriginIsolated',true);
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('<html>FileFlow</html>',{status:200,headers:{'content-type':'text/html'}})));
   const read=vi.fn();
-  await expect(renderDocxOffline({...source,arrayBuffer:read} as unknown as File)).rejects.toThrow('not packaged');
+  await expect(renderDocxOffline({...source,arrayBuffer:read} as unknown as File)).rejects.toThrow('missing from this deployment');
   expect(read).not.toHaveBeenCalled();
   expect(document.querySelector('iframe')).toBeNull();
 });
@@ -24,6 +24,13 @@ it('cancellation before startup does not open an engine frame', async () => {
   const controller=new AbortController();controller.abort();
   await expect(renderDocxOffline(source,[],undefined,controller.signal)).rejects.toMatchObject({name:'AbortError'});
   expect(fetcher).not.toHaveBeenCalled();expect(document.querySelector('iframe')).toBeNull();
+});
+it('rejects a stale runtime manifest before reading the document', async () => {
+  vi.stubGlobal('crossOriginIsolated',true);
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({engine:'LibreOffice WASM'}),{headers:{'content-type':'application/json'}})));
+  const read=vi.fn();
+  await expect(renderDocxOffline({...source,arrayBuffer:read} as unknown as File)).rejects.toThrow('cached office package is outdated');
+  expect(read).not.toHaveBeenCalled();expect(document.querySelector('iframe')).toBeNull();
 });
 it('does not initialize the large engine on a reported low-memory device', async () => {
   vi.stubGlobal('crossOriginIsolated',true);
