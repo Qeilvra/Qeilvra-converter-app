@@ -48,6 +48,17 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures { buildConfig true }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            doFirst { rootProject.file('../.tools/android-test-home').mkdirs() }
+            jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED', '--add-opens=java.base/java.util=ALL-UNNAMED', '--add-opens=java.base/java.io=ALL-UNNAMED', '--add-opens=java.desktop/java.awt.font=ALL-UNNAMED'
+            systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+            systemProperty 'user.home', rootProject.file('../.tools/android-test-home').absolutePath
+            systemProperty 'fileflow.capture', System.getProperty('fileflow.capture','after')
+            systemProperty 'fileflow.evidenceDir', providers.gradleProperty('fileflowEvidenceDir').orElse(rootProject.file('../.tools/android-ui').absolutePath).get()
+        }
+    }
     sourceSets.main.java.srcDirs += bundledOfflineOcr ? 'src/offlineOcr/java' : 'src/noOcr/java'
 }
 
@@ -64,6 +75,7 @@ dependencies {
     implementation 'com.google.android.ump:user-messaging-platform:4.0.0'
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.17'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }

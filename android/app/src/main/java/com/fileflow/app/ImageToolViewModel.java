@@ -27,6 +27,7 @@ public final class ImageToolViewModel extends AndroidViewModel {
 
     final ArrayList<Item> items = new ArrayList<>();
     @Nullable byte[] outputBytes;
+    @Nullable java.io.File outputFile;
     @Nullable String outputName;
     @Nullable String outputMime;
     @Nullable Uri pendingCameraUri;
@@ -36,13 +37,13 @@ public final class ImageToolViewModel extends AndroidViewModel {
 
     public ImageToolViewModel(@NonNull Application application) { super(application); }
     LiveData<State> state() { return state; }
-    void changed() { generation++; outputBytes = null; outputName = null; outputMime = null; state.setValue(new State(false, null, "Ready to process.")); }
+    void changed() { generation++; outputFile = null; outputBytes = null; outputName = null; outputMime = null; state.setValue(new State(false, null, "Ready to process.")); }
     boolean isWorking() { State value = state.getValue(); return value != null && value.working; }
 
     void process(String tool, int option, int targetKb, int maxWidth, int maxHeight) {
         if (items.isEmpty() || isWorking()) return;
         final int request = ++generation;
-        outputBytes = null; outputName = null; outputMime = null;
+        outputFile = null; outputBytes = null; outputName = null; outputMime = null;
         state.setValue(new State(true, null, "Processing locally…"));
         executor.execute(() -> {
             try {
@@ -69,8 +70,9 @@ public final class ImageToolViewModel extends AndroidViewModel {
                     mime = "application/pdf";
                 }
                 if (request != generation) return;
+                outputFile = HistoryStore.addResult(getApplication(), operationName(tool), name, mime, bytes);
                 outputBytes = bytes; outputName = name; outputMime = mime;
-                HistoryStore.add(getApplication(), operationName(tool), name, bytes.length);
+
                 state.postValue(new State(false, null, resultMessage == null ? "Output ready · " + formatBytes(bytes.length) : resultMessage));
             } catch (Exception | OutOfMemoryError error) {
                 if (request == generation) state.postValue(new State(false, error instanceof OutOfMemoryError ? "Not enough memory. Try fewer images or a smaller file." : error.getMessage() == null ? "Image processing failed." : error.getMessage(), null));

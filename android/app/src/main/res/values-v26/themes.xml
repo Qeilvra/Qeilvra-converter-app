@@ -1,0 +1,1 @@
+<resources><style name="Theme.FileFlow" parent="Base.Theme.FileFlow"><item name="android:fontFamily">@font/fileflow_inter</item><item name="fontFamily">@font/fileflow_inter</item></style></resources>

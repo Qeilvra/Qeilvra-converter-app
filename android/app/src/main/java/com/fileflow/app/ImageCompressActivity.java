@@ -80,6 +80,7 @@ public final class ImageCompressActivity extends AppCompatActivity {
         });
         model.state().observe(this, uiState -> {
             setBusy(uiState.working);
+            ResultUi.update(this,uiState.working,getString(R.string.processing_locally),uiState.error,model.sourceName,model.outputFile,outputName(),"image/jpeg");
             if (uiState.working) {
                 status.setText(R.string.processing_locally);
             } else if (uiState.error != null) {
@@ -108,7 +109,9 @@ public final class ImageCompressActivity extends AppCompatActivity {
             // Some document providers grant access only for the activity lifetime.
         }
         model.sourceUri = uri;
-        model.outputBytes = null;
+        progress.setVisibility(View.GONE);
+        model.outputBytes = null; model.outputFile = null;
+        ResultUi.update(this,false,null,null,null,null,null,null);
         readMetadata(uri);
         preview.setImageBitmap(thumbnail);
         saveButton.setVisibility(View.GONE);
@@ -195,7 +198,7 @@ public final class ImageCompressActivity extends AppCompatActivity {
     }
 
     private void setBusy(boolean busy) {
-        progress.setVisibility(busy ? View.VISIBLE : View.GONE);
+        progress.setVisibility(View.GONE); // Validation uses the small bar; engine work uses the shared panel.
         findViewById(R.id.buttonChoose).setEnabled(!busy);
         saveButton.setVisibility(!busy && model.outputBytes != null ? View.VISIBLE : View.GONE);
         shareButton.setVisibility(!busy && model.outputBytes != null ? View.VISIBLE : View.GONE);

@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FileFlow" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/blue_primary</item>
+    <style name="Base.Theme.FileFlow" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/blue_deep</item>
+        <item name="colorOnPrimary">@color/button_text</item>
+        <item name="colorOnSurface">@color/navy</item>
+        <item name="colorOnBackground">@color/navy</item>
+        <item name="colorSurface">@color/surface</item>
         <item name="colorSecondary">@color/success</item>
-        <item name="android:fontFamily">sans</item>
+        <item name="android:fontFamily">sans-serif</item>
         <item name="android:colorAccent">@color/blue_primary</item>
         <item name="android:navigationBarColor">@color/surface</item>
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowBackground">@color/background</item>
     </style>
+<style name="Theme.FileFlow" parent="Base.Theme.FileFlow"/>
 </resources>

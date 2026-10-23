@@ -36,7 +36,7 @@
     <string name="clear_history">Clear history</string>
     <string name="dark_theme">Dark theme</string>
     <string name="urdu_language">Urdu interface</string>
-    <string name="privacy_summary">FileFlow tools process documents on this device without a conversion server or login. Recent activity stores metadata only. Existing advertising SDKs may use the network; document processing does not depend on ads.</string>
+    <string name="privacy_summary">FileFlow tools process documents on this device without a conversion server or login. Recent stores up to 30 private output copies, limited to 100 MB in total. Removing history removes those private copies; files saved elsewhere are kept. Existing advertising SDKs may use the network; document processing does not depend on ads.</string>
     <string name="terms_summary">PDF and Office layouts differ, and unusual fonts or drawing layers can still vary. Scanned table extraction requires approved OCR. Already optimized files may not become smaller.</string>
     <string name="ad_privacy_options">Ad privacy options</string>
     <string name="back">Back</string>

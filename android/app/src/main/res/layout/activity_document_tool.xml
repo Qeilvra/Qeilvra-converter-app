@@ -5,11 +5,13 @@
     android:layout_height="match_parent"
     android:fillViewport="true">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="18dp" android:paddingTop="16dp" android:paddingEnd="18dp" android:paddingBottom="32dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:orientation="horizontal">
-            <com.google.android.material.button.MaterialButton android:id="@+id/buttonBack" style="@style/Widget.Material3.Button.IconButton" android:layout_width="48dp" android:layout_height="48dp" android:contentDescription="@string/back" android:text="@string/back_symbol" android:textSize="24sp" app:backgroundTint="@color/surface" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="56dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton android:id="@+id/buttonBack" style="@style/Widget.Material3.Button.IconButton" android:layout_width="48dp" android:layout_height="48dp" android:contentDescription="@string/back" android:text="@string/back_symbol" android:textSize="24sp" app:backgroundTint="@color/surface" android:textColor="@color/blue_deep" />
             <TextView android:id="@+id/textTitle" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/navy" android:textSize="22sp" android:textStyle="bold" />
             <Space android:layout_width="48dp" android:layout_height="48dp" />
         </LinearLayout>
+        <include layout="@layout/component_processing"/>
+
 
         <TextView android:id="@+id/textDescription" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_hero" android:padding="20dp" android:textColor="@color/secondary_text" android:textSize="13sp" />
         <com.google.android.material.checkbox.MaterialCheckBox android:id="@+id/checkOfflineOcr" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="@string/offline_ocr_option" android:visibility="gone" />

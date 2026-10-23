@@ -1,0 +1,9 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/processingPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal" android:visibility="gone" android:padding="20dp" android:background="@drawable/bg_glass" android:layout_marginVertical="16dp">
+<com.fileflow.app.ui.FileArtworkView android:id="@+id/processingArtwork" android:layout_width="match_parent" android:layout_height="200dp" android:importantForAccessibility="no"/>
+<TextView android:id="@+id/processingHeading" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:textSize="24sp" android:textStyle="bold" android:textColor="@color/navy"/>
+<TextView android:id="@+id/processingDetail" style="@style/Text.FileFlow.Body" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:layout_marginVertical="12dp" android:accessibilityLiveRegion="polite"/>
+<com.fileflow.app.ui.GradientProgressView android:id="@+id/processingBar" android:layout_width="match_parent" android:layout_height="10dp"/>
+<TextView android:id="@+id/processingFiles" style="@style/Text.FileFlow.Body" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginVertical="16dp"/>
+<com.google.android.material.button.MaterialButton android:id="@+id/processingCancel" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/ui_cancel_unavailable" android:enabled="false"/>
+<TextView android:id="@+id/processingCancellationNote" style="@style/Text.FileFlow.Caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="@string/ui_cancel_explanation"/>
+</LinearLayout>

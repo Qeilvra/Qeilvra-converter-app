@@ -228,7 +228,8 @@ public final class ImageToolActivity extends AppCompatActivity {
     }
 
     private void renderState(ImageToolViewModel.State state) {
-        progress.setVisibility(state.working ? View.VISIBLE : View.GONE);
+        ResultUi.update(this,state.working,state.message,state.error,selectedNames(),model.outputFile,model.outputName,model.outputMime);
+        progress.setVisibility(View.GONE); // The shared panel owns indeterminate processing feedback.
         findViewById(R.id.buttonChoose).setEnabled(!state.working);
         findViewById(R.id.buttonCamera).setEnabled(!state.working);
         option.setEnabled(!state.working);
@@ -247,15 +248,17 @@ public final class ImageToolActivity extends AppCompatActivity {
         }
     }
 
+    private String selectedNames(){StringBuilder names=new StringBuilder();for(ImageToolViewModel.Item item:model.items){if(names.length()>0)names.append("\n");names.append(item.name);}return names.toString();}
+
     private void share() {
         if (model.outputBytes != null && model.outputName != null && model.outputMime != null) ToolIo.share(this, model.outputBytes, model.outputName, model.outputMime);
     }
 
     private String displayName(Uri uri) {
         try (Cursor cursor = getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) { int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME); if (index >= 0 && !cursor.isNull(index)) return cursor.getString(index); }
+            if (cursor != null && cursor.moveToFirst()) { int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME); if (index >= 0 && !cursor.isNull(index)) return new File(cursor.getString(index)).getName(); }
         }
-        return uri.getLastPathSegment() == null ? "image" : uri.getLastPathSegment();
+        return uri.getLastPathSegment() == null ? "image" : new File(uri.getLastPathSegment()).getName();
     }
 
     private static int number(TextInputEditText input, int fallback) { try { return Integer.parseInt(input.getText() == null ? "" : input.getText().toString()); } catch (NumberFormatException ignored) { return fallback; } }

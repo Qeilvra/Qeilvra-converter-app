@@ -2,4 +2,5 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="shared_outputs" path="shared/" />
     <cache-path name="camera_captures" path="camera/" />
+    <files-path name="recent_outputs" path="recent/" />
 </paths>

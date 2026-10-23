@@ -32,8 +32,10 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     }
 
     final ArrayList<Uri> uris = new ArrayList<>();
+    final ArrayList<String> sourceNames = new ArrayList<>();
     final ArrayList<PageEdit> pages = new ArrayList<>();
     @Nullable byte[] outputBytes;
+    @Nullable java.io.File outputFile;
     @Nullable String outputName;
     @Nullable String outputMime;
     @Nullable String previewText;
@@ -51,8 +53,9 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     void select(List<Uri> selected) {
         generation++;
         uris.clear(); uris.addAll(selected);
+        sourceNames.clear();
         pages.clear();
-        outputBytes = null; outputName = null; outputMime = null; previewText = null;
+        outputFile = null; outputBytes = null; outputName = null; outputMime = null; previewText = null;
         state.setValue(new State(false, null, "Ready to process."));
     }
 
@@ -96,7 +99,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     void process(String tool, int editorAction, String editedText) {
         if (uris.isEmpty() || isWorking()) return;
         final int request = ++generation;
-        outputBytes = null; outputName = null; outputMime = null;
+        outputFile = null; outputBytes = null; outputName = null; outputMime = null;
         state.setValue(new State(true, null, "word-pdf".equals(tool) && editorAction == 2 ? "Uploading to the selected office renderer…" : "Processing locally…"));
         executor.execute(() -> {
             try {
@@ -159,8 +162,9 @@ public final class DocumentToolViewModel extends AndroidViewModel {
                     default: throw new IllegalArgumentException("Unknown document tool.");
                 }
                 if (request != generation) return;
+                outputFile = HistoryStore.addResult(getApplication(), operationName(tool, editorAction), name, mime, bytes);
                 outputBytes = bytes; outputName = name; outputMime = mime;
-                HistoryStore.add(getApplication(), operationName(tool, editorAction), name, bytes.length);
+
                 String ready = "Output ready · " + formatBytes(bytes.length) + detail;
                 state.postValue(new State(false, null, ready));
             } catch (Exception | OutOfMemoryError error) {

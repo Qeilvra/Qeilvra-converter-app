@@ -24,9 +24,14 @@ final class ToolIo {
     private ToolIo() {}
 
     static void insets(AppCompatActivity activity) {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.getWindow(),false);
+        activity.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        activity.getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        activity.getWindow().setNavigationBarColor(android.os.Build.VERSION.SDK_INT<26?0xFF091B4D:android.graphics.Color.TRANSPARENT);
+        com.fileflow.app.ui.Ui.decorate(activity);
         View content = activity.findViewById(android.R.id.content);
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(content, (view, insets) -> {
-            androidx.core.graphics.Insets bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() | androidx.core.view.WindowInsetsCompat.Type.displayCutout());
+            androidx.core.graphics.Insets bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() | androidx.core.view.WindowInsetsCompat.Type.displayCutout() | androidx.core.view.WindowInsetsCompat.Type.ime());
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
             return insets;
         });

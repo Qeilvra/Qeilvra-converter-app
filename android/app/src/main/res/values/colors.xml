@@ -1,12 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="blue_primary">#1677F2</color>
-    <color name="blue_deep">#075FDD</color>
-    <color name="navy">#0A1F54</color>
-    <color name="background">#F2F7FF</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="secondary_text">#44638C</color>
-    <color name="success">#00A67D</color>
-    <color name="error">#E5484D</color>
-    <color name="line">#D8E5F5</color>
+<color name="blue_primary">#087CFF</color>
+<color name="blue_deep">#0757DA</color>
+<color name="navy">#091B4D</color>
+<color name="background">#EAF3FF</color>
+<color name="surface">#E6FFFFFF</color>
+<color name="secondary_text">#4D6590</color>
+<color name="success">#00A979</color>
+<color name="error">#D9314C</color>
+<color name="line">#DDFFFFFF</color>
+<color name="glass_end">#BDE7F3FF</color>
+<color name="purple">#9465F8</color>
+<color name="cyan">#23B6FF</color>
+<color name="coral">#FF5267</color>
+<color name="emerald">#00BF8F</color>
+<color name="orange">#FF963F</color>
+<color name="bottom_surface">#EEFFFFFF</color>
 </resources>

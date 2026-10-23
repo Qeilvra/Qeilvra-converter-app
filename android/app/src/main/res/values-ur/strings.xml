@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">فائل فلو</string>
     <string name="tagline">آپ کے تمام فائل ٹولز ایک جگہ</string>
@@ -23,7 +23,7 @@
     <string name="clear_history">تاریخ صاف کریں</string>
     <string name="dark_theme">ڈارک تھیم</string>
     <string name="urdu_language">اردو انٹرفیس</string>
-    <string name="privacy_summary">FileFlow کے اوزار دستاویزات اسی ڈیوائس پر پراسیس کرتے ہیں۔ کنورژن کے لیے سرور یا لاگ ان درکار نہیں۔ حالیہ سرگرمی صرف میٹا ڈیٹا محفوظ کرتی ہے۔ اشتہارات کے موجودہ SDK نیٹ ورک استعمال کر سکتے ہیں۔</string>
+    <string name="privacy_summary">FileFlow تمام تبدیلیاں آپ کے آلے پر کرتا ہے۔ حالیہ میں زیادہ سے زیادہ 30 نجی فائلیں (کل 100 MB تک) محفوظ رہتی ہیں۔ ہسٹری صاف کرنے سے یہ نجی نقول حذف ہوتی ہیں؛ دوسری جگہ محفوظ فائلیں برقرار رہتی ہیں۔ اشتہارات کے لیے انٹرنیٹ استعمال ہو سکتا ہے۔</string>
     <string name="terms_summary">PDF اور آفس کی ترتیب مختلف ہو سکتی ہے، اور غیر معمولی فونٹس یا گرافکس میں فرق رہ سکتا ہے۔ اسکین شدہ جدول کے لیے منظور شدہ OCR درکار ہے۔ پہلے سے بہتر فائل مزید چھوٹی نہ بھی ہو سکتی ہے۔</string>
     <string name="ad_privacy_options">اشتہاری رازداری کے اختیارات</string>
     <string name="back">واپس</string>

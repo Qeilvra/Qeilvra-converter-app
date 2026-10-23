@@ -1,6 +1,8 @@
 package com.fileflow.app;
 
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.Espresso.onData;
+import static org.hamcrest.Matchers.anything;
 import static androidx.test.espresso.Espresso.pressBackUnconditionally;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
@@ -20,23 +22,27 @@ public final class MainNavigationTest {
     @Rule public final ActivityScenarioRule<MainActivity> activity = new ActivityScenarioRule<>(MainActivity.class);
 
     @Test public void everyDashboardToolOpensItsIntendedWorkflow() {
-        openAndReturn(R.id.cardImageCompressor, R.string.image_compressor);
-        openAndReturn(R.id.buttonPdfExcel, R.string.pdf_to_excel);
-        openAndReturn(R.id.buttonPdfWord, R.string.pdf_to_word);
-        openAndReturn(R.id.buttonWordPdf, R.string.word_to_pdf);
-        openAndReturn(R.id.buttonPdfCompress, R.string.pdf_compressor);
-        openAndReturn(R.id.buttonPdfEditor, R.string.pdf_editor);
-        openAndReturn(R.id.buttonImagePdf, R.string.image_to_pdf);
-        openAndReturn(R.id.buttonImageConvert, R.string.image_converter);
-        openAndReturn(R.id.buttonScanner, R.string.document_scanner);
-        openAndReturn(R.id.buttonPrepare, R.string.prepare_upload);
-        openAndReturn(R.id.buttonRecent, R.string.recent_activity);
-        openAndReturn(R.id.buttonSettings, R.string.settings);
+        onView(withId(R.id.navTools)).perform(click());
+        for(int i=0;i<ToolCatalog.ALL.length;i++){
+            onData(anything()).inAdapterView(withId(R.id.toolsList)).atPosition(i).perform(click());
+            onView(withText(ToolCatalog.ALL[i].title)).check(matches(isDisplayed()));
+            pressBackUnconditionally();
+        }
+        onView(withId(R.id.buttonRecent)).perform(click());
+        onView(withId(R.id.recentFilters)).check(matches(isDisplayed()));pressBackUnconditionally();
+        onView(withId(R.id.buttonSettings)).perform(click());
+        onView(withId(R.id.switchDark)).check(matches(isDisplayed()));
     }
 
-    private static void openAndReturn(int buttonId, int expectedTitle) {
-        onView(withId(buttonId)).perform(scrollTo(), click());
-        onView(withText(expectedTitle)).check(matches(isDisplayed()));
-        pressBackUnconditionally();
+    @Test public void retainedOutputHasAnActualReadableFileProviderUri() throws Exception {
+        android.content.Context context=androidx.test.core.app.ApplicationProvider.getApplicationContext();
+        android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(32,32,android.graphics.Bitmap.Config.ARGB_8888);
+        java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,bytes);bitmap.recycle();
+        java.io.File file=HistoryStore.addResult(context,"UI test","synthetic-test.png","image/png",bytes.toByteArray());
+        android.net.Uri uri=androidx.core.content.FileProvider.getUriForFile(context,context.getPackageName()+".files",file);
+        try(java.io.InputStream in=context.getContentResolver().openInputStream(uri)){
+            android.graphics.Bitmap reopened=android.graphics.BitmapFactory.decodeStream(in);
+            org.junit.Assert.assertNotNull(reopened);org.junit.Assert.assertEquals(32,reopened.getWidth());reopened.recycle();
+        }finally{for(HistoryStore.Entry entry:HistoryStore.read(context))if(entry.file!=null&&entry.file.equals(file))HistoryStore.remove(context,entry.id);}
     }
 }

@@ -188,6 +188,7 @@ public final class DocumentToolActivity extends AppCompatActivity {
             findViewById(R.id.buttonChoose).setEnabled(true);
             progress.setVisibility(View.GONE);
             model.select(selected);
+            model.sourceNames.addAll(selection.names);
             model.sourceName = selected.size() == 1 ? selection.names.get(0) : selected.size() + "-pdfs";
             model.sourceSize = selection.size;
             fileInfo.setText(getString(R.string.selected_files_size, String.join(" · ", selection.names), formatBytes(selection.size)));
@@ -209,7 +210,8 @@ public final class DocumentToolActivity extends AppCompatActivity {
     }
 
     private void render(DocumentToolViewModel.State state) {
-        progress.setVisibility(state.working ? View.VISIBLE : View.GONE);
+        ResultUi.update(this,state.working,state.message,state.error,String.join("\n",model.sourceNames),model.outputFile,model.outputName,model.outputMime);
+        progress.setVisibility(View.GONE); // The shared panel owns indeterminate processing feedback.
         findViewById(R.id.buttonChoose).setEnabled(!state.working);
         actionSpinner.setEnabled(!state.working);
         preview.setEnabled(!state.working);
@@ -255,9 +257,10 @@ public final class DocumentToolActivity extends AppCompatActivity {
         Collections.swap(model.pages, index, target); invalidateOutput(); renderPages();
     }
 
-    private void invalidateOutput() { model.outputBytes = null; model.outputName = null; model.outputMime = null; resultActions.setVisibility(View.GONE); }
+    private void invalidateOutput() { model.outputFile = null; model.outputBytes = null; model.outputName = null; model.outputMime = null; resultActions.setVisibility(View.GONE); ResultUi.update(this,model.isWorking(),null,null,model.sourceName,null,null,null); }
 
     private void restore() {
+        ResultUi.update(this,model.isWorking(),null,null,model.sourceName,model.outputFile,model.outputName,model.outputMime);
         if (!model.uris.isEmpty()) {
             fileInfo.setText(getString(R.string.selected_file_size, model.sourceName == null ? getString(R.string.choose_file) : model.sourceName, formatBytes(model.sourceSize)));
             if (model.previewText != null) { preview.setText(model.previewText); preview.setTag(Boolean.TRUE); }
@@ -277,12 +280,12 @@ public final class DocumentToolActivity extends AppCompatActivity {
     }
 
     private Metadata metadata(Uri uri) {
-        String name = "document"; long size = 0;
+        String name = uri.getLastPathSegment()==null?"document":new File(uri.getLastPathSegment()).getName(); long size = 0;
         try (Cursor cursor = getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
             if (cursor != null && cursor.moveToFirst()) {
                 int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                 int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
-                if (nameIndex >= 0 && !cursor.isNull(nameIndex)) name = cursor.getString(nameIndex);
+                if (nameIndex >= 0 && !cursor.isNull(nameIndex)) name = new File(cursor.getString(nameIndex)).getName();
                 if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex);
             }
         }

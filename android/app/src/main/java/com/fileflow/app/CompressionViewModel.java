@@ -28,6 +28,7 @@ public final class CompressionViewModel extends AndroidViewModel {
     private final MutableLiveData<UiState> state = new MutableLiveData<>(new UiState(false, null, 100));
     @Nullable Uri sourceUri;
     @Nullable byte[] outputBytes;
+    @Nullable java.io.File outputFile;
     @Nullable String sourceName;
     long sourceSize;
     int outputWidth;
@@ -47,16 +48,17 @@ public final class CompressionViewModel extends AndroidViewModel {
         UiState current = state.getValue();
         if (source == null || (current != null && current.working)) return;
         state.setValue(new UiState(true, null, targetKb));
-        outputBytes = null;
+        outputBytes = null; outputFile = null;
         executor.execute(() -> {
             try {
                 ImageCompressor.Result result = ImageCompressor.compress(
                         getApplication().getContentResolver(), source, targetKb * 1024, quality, maxLongEdge);
+                outputFile = HistoryStore.addResult(getApplication(), "Image compression", (sourceName == null ? "image" : sourceName.replaceFirst("\\.[^.]+$", "")) + "-compressed.jpg", "image/jpeg", result.bytes);
                 outputBytes = result.bytes;
                 outputWidth = result.width;
                 outputHeight = result.height;
                 targetReached = result.reachedTarget;
-                HistoryStore.add(getApplication(), "Image compression", (sourceName == null ? "image" : sourceName.replaceFirst("\\.[^.]+$", "")) + "-compressed.jpg", result.bytes.length);
+
                 state.postValue(new UiState(false, null, targetKb));
             } catch (Exception | OutOfMemoryError error) {
                 String message = error instanceof OutOfMemoryError ? "Not enough memory. Try a smaller image." : error.getMessage() == null ? "Compression failed. Try a smaller image." : error.getMessage();
