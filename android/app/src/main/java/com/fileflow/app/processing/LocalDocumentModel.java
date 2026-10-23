@@ -11,7 +11,7 @@ import java.util.List;
 /** Positioned glyph extraction, independent of desktop AWT or a server-only Tabula dependency. */
 final class LocalDocumentModel {
     static final class Span {
-        String text, font; float x, y, width, size;
+        String text, font; float x, y, width, size; String color = "000000"; boolean underline;
         Span(TextPosition p) { text = p.getUnicode(); font = p.getFont().getName(); x = p.getXDirAdj(); y = p.getYDirAdj(); width = p.getWidthDirAdj(); size = p.getFontSizeInPt(); }
         Span(String text, float x, float y, float width, float size) { this.text = text; this.x = x; this.y = y; this.width = width; this.size = size; this.font = "Arial"; }
     }
@@ -21,6 +21,9 @@ final class LocalDocumentModel {
         final List<List<Span>> cells = new ArrayList<>();
     }
     static List<Line> read(PDDocument document, int page) throws IOException {
+        return read(document, page, false);
+    }
+    static List<Line> read(PDDocument document, int page, boolean withFormatting) throws IOException {
         if (document.getPage(page - 1).getRotation() != 0) throw new IOException("Rotate the PDF page upright with the PDF Editor before local editable conversion.");
         List<Span> spans = new ArrayList<>();
         PDFTextStripper stripper = new PDFTextStripper() {
@@ -29,7 +32,10 @@ final class LocalDocumentModel {
                 if (position.getUnicode() == null || position.getUnicode().isEmpty()) return;
                 if (++characters > 200_000) throw new IllegalArgumentException("This page exceeds the local text limit.");
                 if (position.getDir() != 0) throw new IllegalArgumentException("Rotated or vertical text is not supported by local editable conversion.");
-                spans.add(new Span(position));
+                Span span = new Span(position);
+                try { if (withFormatting) span.color = String.format(java.util.Locale.ROOT, "%06X", getGraphicsState().getNonStrokingColor().toRGB() & 0xffffff); }
+                catch (IOException unsupportedColor) { span.color = "000000"; }
+                spans.add(span);
             }
         };
         stripper.setStartPage(page); stripper.setEndPage(page); stripper.setSortByPosition(true); stripper.getText(document);

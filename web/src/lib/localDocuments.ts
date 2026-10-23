@@ -2,9 +2,9 @@ import type { ExtractedTable } from '../types';
 import type { PDFPageProxy } from 'pdfjs-dist';
 
 export type Progress = (message: string) => void;
-export type Span = { text: string; x: number; y: number; width: number; size: number; font: string };
+export type Span = import('./pdfWordLayout').WordSpan;
 export type Line = { y: number; size: number; spans: Span[]; cells: Span[][] };
-export type PageText = { width: number; height: number; lines: Line[] };
+export type PageText = import('./pdfWordLayout').WordPage;
 const MAX_FILE = 20 * 1024 * 1024;
 const MAX_PAGES = 100;
 const MAX_CHARS = 2_000_000;
@@ -68,9 +68,13 @@ async function pageText(page: PDFPageProxy, withFonts = false): Promise<PageText
     if (Math.abs(matrix[1]) > .2 || Math.abs(matrix[2]) > .2 || item.dir === 'ttb') throw new Error('Rotated or vertical text is not supported by local editable conversion.');
     const style = content.styles[item.fontName];
     const font = page.commonObjs.has(item.fontName) ? page.commonObjs.get(item.fontName) as { name?: string } : undefined;
-    spans.push({ text: item.str, x: matrix[4], y: matrix[5], width: item.width, size: Math.hypot(matrix[2], matrix[3]), font: font?.name ?? style?.fontFamily ?? 'Arial' });
+    spans.push({ text: item.str, x: matrix[4], y: matrix[5], width: item.width, size: Math.hypot(matrix[2], matrix[3]), font: font?.name ?? style?.fontFamily ?? 'Arial', ascent: style?.ascent });
   }
-  return { width: viewport.width, height: viewport.height, lines: groupLines(spans) };
+  const paint = withFonts ? await (await import('./pdfWordPaint')).readWordPaint(page, spans) : undefined;
+  const warnings: string[] = [];
+  if (paint?.unmatched) warnings.push(`${paint.unmatched} text spans could not be matched reliably to paint operators; their text color may use a default.`);
+  if (paint?.unsupportedPaths) warnings.push(`${paint.unsupportedPaths} complex vector paths were not reconstructed. Simple rules, text underlines and detected table borders are handled separately.`);
+  return { width: viewport.width, height: viewport.height, lines: groupLines(spans), rules: paint?.rules, warnings };
 }
 
 // A table must contain two adjacent multi-cell lines. Blank/misaligned cells remain reviewable.
@@ -153,9 +157,9 @@ export async function tablesToXlsxLocal(tables: ExtractedTable[]): Promise<Blob>
   return new Blob([await workbook.xlsx.writeBuffer() as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
-async function pageImages(page: PDFPageProxy): Promise<Array<{ data: Uint8Array; width: number; height: number; y: number }>> {
+async function pageImages(page: PDFPageProxy): Promise<import('./pdfWordExport').WordImage[]> {
   const { OPS, Util } = await import('pdfjs-dist');
-  const operators = await page.getOperatorList(); const images: Array<{ data: Uint8Array; width: number; height: number; y: number }> = [];
+  const operators = await page.getOperatorList(); const images: import('./pdfWordExport').WordImage[] = [];
   let matrix = [1, 0, 0, 1, 0, 0]; const stack: number[][] = []; let pixels = 0;
   for (let index = 0; index < operators.fnArray.length; index++) {
     const op = operators.fnArray[index]; const args = operators.argsArray[index];
@@ -181,7 +185,11 @@ async function pageImages(page: PDFPageProxy): Promise<Array<{ data: Uint8Array;
           context.putImageData(new ImageData(rgba, img.width, img.height), 0, 0);
         }
         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Image export failed.')), 'image/png'));
-        images.push({ data: new Uint8Array(await blob.arrayBuffer()), width: Math.hypot(matrix[0], matrix[1]), height: Math.hypot(matrix[2], matrix[3]), y: page.getViewport({ scale: 1 }).height - matrix[5] - Math.hypot(matrix[2], matrix[3]) });
+        const viewport = page.getViewport({ scale: 1 });
+        const corners = [[0, 0], [0, 1], [1, 0], [1, 1]].map(p => { Util.applyTransform(p, matrix); Util.applyTransform(p, viewport.transform); return p; });
+        const x = Math.min(...corners.map(p => p[0])); const y = Math.min(...corners.map(p => p[1]));
+        if (Math.abs(matrix[1]) > .2 || Math.abs(matrix[2]) > .2 || matrix[0] < 0 || matrix[3] < 0) throw new Error('Rotated or mirrored embedded images are not supported by local editable conversion.');
+        images.push({ data: new Uint8Array(await blob.arrayBuffer()), width: Math.max(...corners.map(p => p[0])) - x, height: Math.max(...corners.map(p => p[1])) - y, x, y });
       } finally { canvas.width = 0; canvas.height = 0; }
     }
   }
@@ -200,9 +208,9 @@ export async function pdfToDocxLocal(file: File, progress?: Progress): Promise<B
     const height = object.dict.lookup(PDFName.of('Height'), PDFNumber).asNumber();
     if (!Number.isFinite(width * height) || width <= 0 || height <= 0 || width * height > 16_000_000 || (pixels += width * height) > 32_000_000) throw new Error('Embedded images exceed the safe local conversion limit.');
   }
-  const { pdf, close } = await openPdf(file); const d = await import('docx'); const sections: ConstructorParameters<typeof d.Document>[0]['sections'][number][] = [];
+  const { pdf, close } = await openPdf(file);
+  const pages: import('./pdfWordExport').WordSourcePage[] = [];
   let chars = 0; let imageBytes = 0;
-  const runs = (spans: Span[]) => spans.map((span, index) => new d.TextRun({ text: `${index && span.x - spans[index - 1].x - spans[index - 1].width > span.size * .15 ? ' ' : ''}${span.text}`, size: Math.max(2, Math.round(span.size * 2)), font: /mono/i.test(span.font) ? 'Courier New' : /serif/i.test(span.font) && !/sans/i.test(span.font) ? 'Times New Roman' : 'Arial', bold: /bold/i.test(span.font), italics: /italic|oblique/i.test(span.font) }));
   try {
     for (let number = 1; number <= pdf.numPages; number++) {
       progress?.(`Reconstructing page ${number} of ${pdf.numPages}`); await pause();
@@ -212,34 +220,14 @@ export async function pdfToDocxLocal(file: File, progress?: Progress): Promise<B
         chars += model.lines.reduce((sum, line) => sum + cellText(line.spans).length, 0);
         if (chars > MAX_CHARS) throw new Error('This PDF exceeds the local text limit.');
         if (!model.lines.length) throw new Error(`Page ${number} has no selectable text. Offline OCR is required; no image-only Word file was created.`);
-        const children: Array<InstanceType<typeof d.Paragraph> | InstanceType<typeof d.Table>> = [];
-        const blocks = tableBlocks(model.lines); const images = await pageImages(page);
+        const images = await pageImages(page);
         imageBytes += images.reduce((sum, image) => sum + image.data.byteLength, 0);
         if (imageBytes > 30 * 1024 * 1024) throw new Error('Extracted images exceed the local document limit.');
-        const left = Math.max(0, Math.min(...model.lines.map((line) => line.spans[0].x)));
-        const emitImages = (y: number) => {
-          while (images.length && images[0].y <= y) {
-            const image = images.shift()!; const scale = Math.min(1, (model.width - left - 20) / Math.max(1, image.width), (model.height - 40) / Math.max(1, image.height));
-            children.push(new d.Paragraph({ children: [new d.ImageRun({ data: image.data, type: 'png', transformation: { width: Math.max(1, image.width * scale * 96 / 72), height: Math.max(1, image.height * scale * 96 / 72) } })] }));
-          }
-        };
-        images.sort((a, b) => a.y - b.y);
-        for (let index = 0; index < model.lines.length;) {
-          const line = model.lines[index]; emitImages(line.y);
-          const block = blocks.find((candidate) => candidate.start === index);
-          if (block) {
-            children.push(new d.Table({ width: { size: 100, type: d.WidthType.PERCENTAGE }, rows: block.rows.map((row) => new d.TableRow({ children: row.map((cell) => new d.TableCell({ children: [new d.Paragraph({ children: runs(cell) })] })) })) })); index = block.end;
-          } else {
-            const next = model.lines[index + 1];
-            children.push(new d.Paragraph({ children: runs(line.spans), indent: { left: Math.max(0, Math.round((line.spans[0].x - left) * 20)) }, spacing: { after: Math.max(0, Math.round(((next ? next.y - line.y : line.size * 1.2) - line.size) * 20)), line: Math.round(line.size * 20), lineRule: d.LineRuleType.EXACT } })); index++;
-          }
-        }
-        emitImages(Infinity);
-        sections.push({ properties: { type: d.SectionType.NEXT_PAGE, page: { size: { width: Math.round(model.width * 20), height: Math.round(model.height * 20) }, margin: { left: Math.round(left * 20), right: 200, top: Math.round(Math.max(0, model.lines[0].y - model.lines[0].size) * 20), bottom: 200 } } }, children });
+        pages.push({ ...model, images });
       } finally { page.cleanup(); }
     }
     progress?.('Creating editable Word file');
-    return await d.Packer.toBlob(new d.Document({ sections }));
+    return await (await import('./pdfWordExport')).exportEditableWord(pages);
   } finally { await close(); }
 }
 

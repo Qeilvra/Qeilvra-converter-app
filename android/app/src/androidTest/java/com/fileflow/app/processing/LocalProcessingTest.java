@@ -25,6 +25,24 @@ import org.junit.runner.RunWith;
 public final class LocalProcessingTest {
     private final Context context = ApplicationProvider.getApplicationContext();
 
+    @Test public void positionedNativeWordRecoversParagraphsColumnsAndActualTextColor() throws Exception {
+        try (PDDocument pdf = new PDDocument()) {
+            com.tom_roush.pdfbox.pdmodel.PDPage page = new com.tom_roush.pdfbox.pdmodel.PDPage(); pdf.addPage(page);
+            try (com.tom_roush.pdfbox.pdmodel.PDPageContentStream content = new com.tom_roush.pdfbox.pdmodel.PDPageContentStream(pdf,page)) {
+                content.beginText(); content.setFont(com.tom_roush.pdfbox.pdmodel.font.PDType1Font.HELVETICA_BOLD,18); content.newLineAtOffset(50,740); content.showText("Two column report"); content.endText();
+                content.setNonStrokingColor(255,0,0);
+                for(int column=0;column<2;column++)for(int line=0;line<3;line++) {
+                    content.beginText();content.setFont(com.tom_roush.pdfbox.pdmodel.font.PDType1Font.HELVETICA,10);content.newLineAtOffset(column==0?50:330,690-line*14);content.showText((column==0?"LEFT":"RIGHT")+" prose continues within its column.");content.endText();
+                }
+            }
+            byte[] word = LocalDocumentProcessor.pdfToDocx(pdf,message -> { });
+            String xml = zipText(word,"word/document.xml");
+            assertTrue(xml.contains("<w:framePr"));assertTrue(xml.contains("w:color w:val=\"FF0000\""));assertTrue(xml.contains("<w:br/>"));
+            assertFalse(xml.contains("<w:tbl>"));assertTrue(xml.indexOf("LEFT")<xml.indexOf("RIGHT"));
+            assertTrue(xml.contains("w:pStyle w:val=\"Heading1\"")||xml.contains("w:pStyle w:val=\"Title\""));
+        }
+    }
+
     @Test public void bundledOcrRecoversEditableScanTextWithoutFlatteningWord() throws Exception {
         org.junit.Assume.assumeTrue(com.fileflow.app.BuildConfig.BUNDLED_OFFLINE_OCR);
         File source = File.createTempFile("ocr-test-", ".pdf", context.getCacheDir());

@@ -10,7 +10,9 @@ word = Document(directory / 'editable.docx')
 pdf = fitz.open(directory / 'source.pdf')
 assert len(word.tables) == 2
 assert len(word.sections) == 2
-assert len(word.inline_shapes) == 2
+# Images now use page-relative anchors; python-docx.inline_shapes excludes those.
+bitmap_images = len(word.element.xpath('.//a:blip'))
+assert bitmap_images == 2
 for table in word.tables:
     assert table.cell(1, 0).text == '001234'
     assert table.cell(2, 0).text == '12345678901234567890'
@@ -21,6 +23,6 @@ for section, page in zip(word.sections, pdf):
     assert abs(section.page_width.pt - page.rect.width) < 1
     assert abs(section.page_height.pt - page.rect.height) < 1
 assert any(run.bold and run.font.size and run.font.size.pt == 18 for p in word.paragraphs for run in p.runs), [(p.text, [(r.font.name, r.font.size.pt if r.font.size else None, r.bold) for r in p.runs]) for p in word.paragraphs]
-result = {'result': 'PASS', 'editable_paragraphs': len(word.paragraphs), 'tables': len(word.tables), 'bitmap_images': len(word.inline_shapes), 'sections': len(word.sections), 'source_pages': len(pdf), 'scope': 'Independent python-docx/PyMuPDF parsing; no Word rendering or pixel-layout equivalence claim'}
+result = {'result': 'PASS', 'editable_paragraphs': len(word.paragraphs), 'tables': len(word.tables), 'bitmap_images': bitmap_images, 'sections': len(word.sections), 'source_pages': len(pdf), 'scope': 'Independent python-docx/PyMuPDF parsing including anchored bitmap assets; rendered quality is checked separately by inspect-word-quality.py'}
 print(json.dumps(result, indent=2))
 (directory / 'independent-inspection.json').write_text(json.dumps(result, indent=2), encoding='utf-8')

@@ -22,7 +22,7 @@ for name, path in [('browser-local', directory / 'editable.docx'), ('optional-de
     text = '\n'.join([p.text for p in document.paragraphs] + [cell.text for table in document.tables for row in table.rows for cell in row.cells])
     results[name] = {
         'paragraphs': len(document.paragraphs), 'tables': len(document.tables),
-        'images': len(document.inline_shapes), 'sections': len(document.sections),
+        'images': len(document.element.xpath('.//a:blip')), 'sections': len(document.sections),
         'identifiers_preserved': all(value in text for value in ['001234', '12345678901234567890']),
         'editable_sentence': 'This sentence must remain editable' in text,
     }

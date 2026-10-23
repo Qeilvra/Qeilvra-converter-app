@@ -19,3 +19,4 @@ build/
 target/
 test-results/
 web/test-results/
+web/.pdf-word-benchmark/

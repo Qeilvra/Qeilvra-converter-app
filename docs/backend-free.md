@@ -45,6 +45,8 @@ The missing `/api/v1` route was an architecture dependency, not an authenticatio
 
 ## PDF-to-Word quality
 
+The 2026-10-23 implementation and measured CV results are documented in [PDF-to-Word layout verification](pdf-to-word-accuracy.md). It adds geometric paragraph/heading/list/column reconstruction, real running matter, positioned editable paragraphs/tables/images, paint/underline recovery and font limitation reports in both platform-specific writers. The comparison and limitations below describe the earlier baseline unless superseded by that report.
+
 `web/src/lib/localDocuments.ts` extracts PDF.js text transforms, groups baselines, infers separate cells from large horizontal gaps and requires repeated multi-cell rows to infer a table. Source font names are requested from PDF.js; familiar font families, bold/italic flags and point sizes become editable Word runs. Each source page creates a section with source dimensions and estimated margins. Bitmap image operators are exported as separate PNG assets and inserted in approximate reading order. Whole PDF pages are not substituted for editable content.
 
 Android's `LocalDocumentModel` reads `TextPosition` glyph coordinates using the Android-specific PDFBox port. `LocalDocumentProcessor` coalesces glyphs into styled runs, writes actual `w:tbl` cells and packages individual image assets captured by a graphics stream engine. It avoids Apache POI, AWT, desktop Python, JNI document suites and a WebView for ordinary text-based conversions.
