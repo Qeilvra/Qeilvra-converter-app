@@ -1,8 +1,10 @@
 # FileFlow
 
-FileFlow has a React/TypeScript PWA and a native Java/XML Android app. Tool screens now process files on-device without login, a database, conversion API, or Spring Boot. Editable PDF-to-Word reconstruction and PDF-to-Excel extraction have explicit quality limits and preserve the existing review/export workflows. The Spring Boot implementation remains in the repository as an optional service.
+FileFlow has a React/TypeScript PWA and a native Java/XML Android app. Local tools process files on-device without login, a database, conversion API, or Spring Boot. Editable PDF-to-Word reconstruction and PDF-to-Excel extraction have explicit quality limits. Native Word-to-PDF offers an installed office-app handoff; basic text export remains available. A configured office-rendering service is optional and requires an explicit user choice before uploading a document.
 
 Read the [backend-free investigation and actual verification](docs/backend-free.md) for feature coverage, supported inputs, licenses, output examples, optional Android OCR, and remaining device checks. Exact Word layout fidelity is not claimed.
+
+The [professional conversion investigation](docs/professional-conversion-research.md) records current engine/API research, real before-and-after renderings, merged-table improvements, office-renderer integration, measured limitations and remaining Android device checks. It supersedes earlier descriptions of the Word conversion paths.
 
 ## Repository
 

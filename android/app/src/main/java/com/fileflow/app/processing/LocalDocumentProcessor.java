@@ -111,7 +111,7 @@ public final class LocalDocumentProcessor {
             for (WordLayout.Rule rule : model.rules) {
                 boolean represented = false;
                 for (Line line : lines) for (Span span : line.spans) if (span.underline && Math.abs(rule.y-span.y) < span.size*.25f && rule.x <= span.x+2 && rule.x+rule.width >= span.x+span.width-2) represented = true;
-                for (WordLayout.Block block : model.blocks) if (block.rows != null && rule.y >= block.y-2 && rule.y <= block.lines.get(block.lines.size()-1).y+block.lines.get(0).size && rule.x >= block.x-2 && rule.x <= block.x+block.width+2) represented = true;
+                for (WordLayout.Block block : model.blocks) if (block.rows != null && rule.y >= block.y-2 && rule.y <= (block.grid != null ? block.grid.get(block.grid.size()-1).y+block.grid.get(block.grid.size()-1).height : block.lines.get(block.lines.size()-1).y+block.lines.get(0).size)+2 && rule.x >= block.x-2 && rule.x <= block.x+block.width+2) represented = true;
                 if (represented) continue;
                 // A tiny independent asset preserves a rule; text and page content remain editable.
                 Bitmap pixel = Bitmap.createBitmap(1,1,Bitmap.Config.ARGB_8888);

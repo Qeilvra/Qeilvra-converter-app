@@ -54,8 +54,13 @@ describe('processing client validation and failures', () => {
     vi.stubGlobal('fetch', vi.fn((_url, init: RequestInit) => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))))));
     const checked = checkProcessingService();
     const assertion = expect(checked).rejects.toThrow(/timed out/);
-    await vi.advanceTimersByTimeAsync(20_001);
+    // Three cold engine probes can consume 15 seconds each. The client must
+    // allow that window while still terminating an unreachable service.
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(vi.mocked(fetch).mock.calls[0][1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(15_001);
     await assertion;
+    expect(vi.getTimerCount()).toBe(0);
   });
   it('rejects oversized responses from Content-Length before reading a download', async () => {
     const body = respond(new Blob(['not read']), new Headers({ 'Content-Length': String(101 * 1024 * 1024) }));

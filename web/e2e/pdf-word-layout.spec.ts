@@ -30,3 +30,19 @@ test('real PDF paint, font families, wrapped paragraphs and semantic lists survi
   expect(xml).toContain('A continuation in the same paragraph.');
   expect(await archive.file('docProps/custom.xml')!.async('string')).toContain('FileFlowConversionReport');
 });
+
+test('the actual conversion button rejects form data before creating a partial Word file', async ({ page }) => {
+  const pdf = await PDFDocument.create(); const sheet = pdf.addPage();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  sheet.drawText('Form content must not silently disappear', { x: 50, y: 700, font, size: 11 });
+  const field = pdf.getForm().createTextField('customer'); field.setText('Synthetic field value');
+  field.addToPage(sheet, { x: 50, y: 600, width: 200, height: 30 });
+  await page.goto('/tools/pdf-to-word');
+  const uploads: string[] = [];
+  page.on('request', request => { if (request.method() === 'POST') uploads.push(request.url()); });
+  await page.locator('input[type=file]').setInputFiles({ name: 'form.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdf.save()) });
+  await page.getByRole('button', { name: 'Convert to DOCX' }).click();
+  await expect(page.getByRole('alert')).toContainText('form fields');
+  await expect(page.getByText('Your file is ready')).toHaveCount(0);
+  expect(uploads).toEqual([]);
+});

@@ -10,7 +10,7 @@ export async function exportEditableWord(pages: WordSourcePage[]) {
   const reconstructed = pages.map(page => ({ ...page, ...reconstructWordPage(page) }));
   markRunningMatter(reconstructed);
   const warnings = new Set<string>(['Font binaries are not embedded; the opening office application must supply them.',
-    'Paragraphs, headings and tables are inferred from geometry. Long uniform text uses bounded blocks when paragraph boundaries are uncertain. Complex vectors, clipping, merged cells and bidirectional layouts may differ.']);
+    'Paragraphs, headings and tables are inferred from geometry. Long uniform text uses bounded blocks when paragraph boundaries are uncertain. Ruled rectangular merged cells are supported; complex vectors, clipping, unruled merges and bidirectional layouts may differ.']);
   const fontChoices = new Map<string, string>();
   pages.forEach((page, index) => page.warnings?.forEach(warning => warnings.add(`Page ${index + 1}: ${warning}`)));
   const fontCache = new Map<string, string>();
@@ -91,6 +91,37 @@ export async function exportEditableWord(pages: WordSourcePage[]) {
       } else {
         const border = { style: block.borders ? d.BorderStyle.SINGLE : d.BorderStyle.NONE, size: block.borders ? Math.max(1, Math.round((block.borderSize ?? .75) * 8)) : 0, color: block.borderColor ?? '000000' };
         const widths = block.widths.map(twips);
+        if (block.grid) {
+          const xs = [block.x]; block.widths.forEach(w => xs.push(xs.at(-1)! + w));
+          // Word positions floating tables relative to the first cell's text margin.
+          const firstCell = block.grid[0].cells[0];
+          const tablePad = firstCell?.lines[0] ? Math.max(0, firstCell.lines[0].spans[0].x - xs[firstCell.column]) : 0;
+          children.push(new d.Table({ width: { size: widths.reduce((a, b) => a + b, 0), type: d.WidthType.DXA }, columnWidths: widths,
+            layout: d.TableLayoutType.FIXED, margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            borders: { top: border, bottom: border, left: border, right: border, insideHorizontal: border, insideVertical: border },
+            float: { horizontalAnchor: d.TableAnchorType.PAGE, verticalAnchor: d.TableAnchorType.PAGE,
+              absoluteHorizontalPosition: twips(block.x + tablePad), absoluteVerticalPosition: twips(block.y), topFromText: 0, bottomFromText: 0, leftFromText: 0, rightFromText: 0 },
+            rows: block.grid.map(row => {
+              // Word uses the largest top cell margin across a row. A common line box
+              // keeps neighboring single-line and wrapped cells on the same baseline.
+              const rowLeading = Math.max(...row.cells.map(cell => cell.lines.length > 1
+                ? (cell.lines.at(-1)!.y - cell.lines[0].y) / (cell.lines.length - 1)
+                : (cell.lines[0]?.size ?? block.lines[0].size) * 1.2));
+              return new d.TableRow({ cantSplit: true, height: { value: twips(row.height), rule: d.HeightRule.EXACT },
+              children: row.cells.map(cell => {
+                const first = cell.lines[0]; const size = first?.size ?? block.lines[0].size;
+                const leading = rowLeading;
+                const top = first ? Math.max(0, first.y - row.y - leading + size * .26 - (block.borderSize ?? .75) / 2) : 0;
+                const pad = first ? Math.max(0, first.spans[0].x - xs[cell.column]) : 0;
+                const children: d.TextRun[] = [];
+                cell.lines.forEach((line, i) => { if (i) children.push(new d.TextRun({ break: 1 })); children.push(...runs(line.spans)); });
+                return new d.TableCell({ columnSpan: cell.columnSpan, rowSpan: cell.rowSpan,
+                  width: { size: widths.slice(cell.column, cell.column + cell.columnSpan).reduce((a, b) => a + b, 0), type: d.WidthType.DXA },
+                  margins: { top: twips(top), bottom: 0, left: twips(pad), right: 0 }, verticalAlign: d.VerticalAlign.TOP,
+                  children: [new d.Paragraph({ children, spacing: { before: 0, after: 0, line: twips(leading), lineRule: d.LineRuleType.EXACT } })] });
+              }) }); }) }));
+          continue;
+        }
         const pad = Math.max(0, block.rows[0][0][0].x - block.x);
         const cellTop = Math.max(0, block.lines[0].y - block.y - block.lines[0].size * 1.2 + block.lines[0].size * .26 - (block.borders ? (block.borderSize ?? .75) / 2 : 0));
         children.push(new d.Table({ width: { size: widths.reduce((a, b) => a + b, 0), type: d.WidthType.DXA }, columnWidths: widths,
@@ -105,7 +136,7 @@ export async function exportEditableWord(pages: WordSourcePage[]) {
     }
     const graphics = [...page.images];
     for (const rule of page.rules ?? []) {
-      if (page.blocks.some(b => b.kind === 'table' && rule.y >= b.y - 2 && rule.y <= b.lines.at(-1)!.y + b.lines[0].size && rule.x >= b.x - 2 && rule.x <= b.x + b.widths.reduce((a, c) => a + c, 0) + 2)) continue;
+      if (page.blocks.some(b => b.kind === 'table' && rule.y >= b.y - 2 && rule.y <= (b.grid ? b.grid.at(-1)!.y + b.grid.at(-1)!.height : b.lines.at(-1)!.y + b.lines[0].size) + 2 && rule.x >= b.x - 2 && rule.x <= b.x + b.widths.reduce((a, c) => a + c, 0) + 2)) continue;
       if (page.lines.some(l => l.spans.some(s => s.underline && Math.abs(rule.y - s.y) < s.size * .25 && rule.x <= s.x + 2 && rule.x + rule.width >= s.x + s.width - 2))) continue;
       const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil((rule.width || rule.thickness) * 2)); c.height = Math.max(1, Math.ceil((rule.height || rule.thickness) * 2));
       if (c.width * c.height > 4_000_000) continue;

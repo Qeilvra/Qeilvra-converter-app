@@ -55,7 +55,9 @@ public class ProcessRunner {
         Process process = null;
         try {
             process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
-            return process.waitFor(5, TimeUnit.SECONDS) && process.exitValue() == 0;
+            // Cold office-engine startup can exceed five seconds on a desktop.
+            // Keep probes bounded, but do not mark a working renderer unavailable.
+            return process.waitFor(15, TimeUnit.SECONDS) && process.exitValue() == 0;
         } catch (IOException error) {
             return false;
         } catch (InterruptedException error) {

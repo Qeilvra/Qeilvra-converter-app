@@ -85,7 +85,7 @@ test('Word to PDF and image conversion produce genuine downloadable formats', as
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     buffer: await wordFixture()
   });
-  await page.getByRole('button', { name: 'Convert to PDF' }).click();
+  await page.getByRole('button', { name: 'Export basic text PDF' }).click();
   await expect(page.getByText('Your file is ready')).toBeVisible();
   let pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save', exact: true }).click();

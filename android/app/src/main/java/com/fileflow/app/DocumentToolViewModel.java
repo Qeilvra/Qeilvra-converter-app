@@ -40,6 +40,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
     @Nullable String sourceName;
     long sourceSize;
     boolean allowOcr;
+    int wordPdfEngine;
     private volatile int generation;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final MutableLiveData<State> state = new MutableLiveData<>(new State(false, null, null));
@@ -96,7 +97,7 @@ public final class DocumentToolViewModel extends AndroidViewModel {
         if (uris.isEmpty() || isWorking()) return;
         final int request = ++generation;
         outputBytes = null; outputName = null; outputMime = null;
-        state.setValue(new State(true, null, "Processing locally…"));
+        state.setValue(new State(true, null, "word-pdf".equals(tool) && editorAction == 2 ? "Uploading to the selected office renderer…" : "Processing locally…"));
         executor.execute(() -> {
             try {
                 byte[] bytes;
@@ -116,7 +117,11 @@ public final class DocumentToolViewModel extends AndroidViewModel {
                         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                         break;
                     case "word-pdf":
-                        bytes = LocalDocumentProcessor.docxToPdf(getApplication().getContentResolver(), uris.get(0));
+                        if (editorAction == 0) throw new IllegalArgumentException("Open this document in an installed office app and choose Export as PDF.");
+                        if (editorAction == 2) {
+                            if (BuildConfig.PROCESSING_API_URL.trim().isEmpty()) throw new IllegalArgumentException("No office rendering service is configured.");
+                            bytes = com.fileflow.app.processing.ProcessingApiClient.docxToPdf(getApplication().getContentResolver(), uris.get(0));
+                        } else bytes = LocalDocumentProcessor.docxToPdf(getApplication().getContentResolver(), uris.get(0));
                         name = base + ".pdf";
                         mime = "application/pdf";
                         break;

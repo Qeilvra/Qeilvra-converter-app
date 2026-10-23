@@ -2,6 +2,8 @@
 
 const rawBaseUrl = (import.meta.env.VITE_PROCESSING_API_URL as string | undefined)?.trim() || '/api/v1';
 const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+// Merely loading a conversion screen must never opt a local document into uploading.
+export const configuredOfficeService = (import.meta.env.VITE_PROCESSING_API_URL as string | undefined)?.trim().replace(/\/+$/, '') || null;
 const REQUEST_TIMEOUT_MS = 150_000;
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const MAX_JSON_BYTES = 8 * 1024 * 1024;
@@ -165,6 +167,6 @@ export const checkProcessingService = async (): Promise<ServiceHealth> => reques
   const data = await readJson<ServiceHealth>(response, 128 * 1024);
   if (!data || !['ready', 'degraded'].includes(data.status) || !Array.isArray(data.operations)) throw new Error('The configured URL does not expose FileFlow service health. Check the backend URL ending in /api/v1.');
   return data;
-}, 20_000);
+}, 60_000);
 
 export const processingApiDescription = 'This tool uploads a temporary copy to the configured FileFlow service. The worker attempts cleanup after each request; processing availability is checked below.';

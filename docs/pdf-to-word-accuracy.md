@@ -1,5 +1,7 @@
 # PDF-to-Word layout verification — 2026-10-23
 
+Follow-up: the [professional conversion investigation](professional-conversion-research.md) adds verified ruled merged-table reconstruction and explicit office-renderer choices. The measurements below describe the preceding reconstruction work, not improvements newly attributed to that follow-up.
+
 FileFlow now reconstructs editable paragraphs, evidenced headings, lists, reading regions, running matter, simple tables, bitmap images and rules locally. The browser and native Android implementations have separate layout/writer changes. No application UI, branding, navigation, backend requirement, paid dependency or deployment was introduced.
 
 The primary files are `test/fileflow_conversion_test_files/Muhammad_Dawood (1).pdf` and `Muhammad_Dawood.docx`. They were read locally; the supplied files were not rewritten. Generated documents, source copies and images remain in the ignored `.tools/pdf-word-quality/` directory. Do not commit the private `test/` inputs or generated CV evidence.

@@ -1,13 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { groupLines } from './localDocuments';
 import { lineText, markRunningMatter, reconstructWordPage, wordFont } from './pdfWordLayout';
-import type { WordSpan, WordPage, WordParagraph } from './pdfWordLayout';
+import type { WordSpan, WordPage, WordParagraph, WordRule } from './pdfWordLayout';
 
 const span = (text: string, x: number, y: number, size = 11, font = 'Arial', width = text.length * size * .48): WordSpan => ({ text, x, y, size, font, width });
 const page = (spans: WordSpan[]): WordPage => ({ width: 612, height: 792, lines: groupLines(spans) });
 const paragraphs = (model: WordPage) => reconstructWordPage(model).blocks.filter((b): b is WordParagraph => b.kind === 'paragraph');
 
 describe('editable Word geometry reconstruction', () => {
+  it('reconstructs ruled merged cells, multiline text and empty cells from actual edges', () => {
+    const model = page([span('Merged heading', 58, 122, 10), span('001234', 58, 155, 10), span('First line', 310, 155, 10),
+      span('Continuation', 310, 170, 10), span('009876', 58, 217, 10)]);
+    const h = (y: number): WordRule => ({ x: 50, y, width: 510, height: 0, color: '123456', thickness: .75 });
+    const v = (x: number, y = 100, height = 130): WordRule => ({ x, y, width: 0, height, color: '123456', thickness: .75 });
+    model.rules = [100, 135, 195, 230].map(h).concat([v(50), v(560), v(300, 135, 95)]);
+    const blocks = reconstructWordPage(model).blocks;
+    expect(blocks).toHaveLength(1); const block = blocks[0]; expect(block.kind).toBe('table');
+    if (block.kind !== 'table') return;
+    expect(block.grid?.map(r => r.cells.map(c => c.columnSpan))).toEqual([[2], [1, 1], [1, 1]]);
+    expect(block.grid?.[1].cells[1].lines.map(lineText)).toEqual(['First line', 'Continuation']);
+    expect(block.grid?.[2].cells[1].lines).toEqual([]);
+    expect(block.widths).toEqual([250, 260]);
+    // A partial horizontal boundary proves a vertical merge in the left column.
+    model.rules = [h(100), h(135), { ...h(195), x: 300, width: 260 }, h(230), v(50), v(560), v(300, 135, 95)];
+    const merged = reconstructWordPage(model).blocks[0];
+    if (merged.kind !== 'table') throw new Error('Missing table');
+    expect(merged.grid?.[1].cells[0].rowSpan).toBe(2);
+    expect(merged.grid?.[1].cells[0].lines.map(lineText)).toEqual(['001234', '009876']);
+  });
   it('joins continuation lines while preserving real paragraph and heading boundaries', () => {
     const blocks = paragraphs(page([span('PROFILE', 50, 60, 16, 'Arial-Bold'), span('The paragraph begins.', 50, 90),
       span('It continues on a second line.', 50, 104), span('Another paragraph.', 50, 140), span('Its continuation.', 50, 154)]));

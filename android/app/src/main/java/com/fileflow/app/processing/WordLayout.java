@@ -13,6 +13,7 @@ final class WordLayout {
     static final class Block {
         final List<Line> lines = new ArrayList<>();
         List<List<List<Span>>> rows;
+        List<WordGrid.Row> grid; List<Float> widths;
         float x, y, width, leading;
         String heading, list, role;
         String borderColor = "000000"; float borderSize = .75f;
@@ -96,7 +97,8 @@ final class WordLayout {
         float body = sizes.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(11f);
         List<Block> blocks = new ArrayList<>(); List<Line> pending = new ArrayList<>();
         for (int i = 0; i < lines.size();) {
-            Block table = table(lines,i,rules);
+            Block table = WordGrid.detect(lines,i,rules);
+            if (table == null) table = table(lines,i,rules);
             if (table == null) pending.add(lines.get(i++));
             else { paragraphs(pending,body,blocks); pending.clear(); blocks.add(table); i += table.lines.size(); }
         }
@@ -129,7 +131,7 @@ final class WordLayout {
         String clean = name.replaceFirst("^[A-Z]{6}\\+", "").replaceAll("(?i)[,-]?(bolditalic|boldoblique|bold|italic|oblique|regular|semibold|light|medium)(PSMT|MT)?$", "").replaceFirst("(?i)(PSMT|MT)$", "");
         switch (clean.replaceAll("[ _-]", "").toLowerCase(java.util.Locale.ROOT)) {
             case "helvetica": case "helveticaneue": case "arial": case "sansserif": return "Arial";
-            case "times": case "timesnewroman": case "timesnewromanps": case "serif": return "Times New Roman";
+            case "times": case "timesroman": case "timesnewroman": case "timesnewromanps": case "serif": return "Times New Roman";
             case "courier": case "couriernew": case "couriernewps": case "monospace": return "Courier New";
             default: return clean.isEmpty() ? "Arial" : clean;
         }

@@ -89,7 +89,7 @@ test('scans, mixed PDFs, complex Word files and over-limit documents fail explic
   const complex = await Packer.toBuffer(new Document({ sections:[{children:[new Table({rows:[new TableRow({children:[new TableCell({children:[new Paragraph('Do not omit this table')]})]})]})]}] }));
   await page.goto('/tools/word-to-pdf');
   await page.locator('input[type=file]').setInputFiles({ name:'table.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:complex });
-  await page.getByRole('button',{name:'Convert to PDF'}).click(); await expect(page.getByRole('alert')).toContainText('simple text');
+  await page.getByRole('button',{name:'Export basic text PDF'}).click(); await expect(page.getByRole('alert')).toContainText('simple text');
 });
 
 test('local numeric and date choices are validated and reopen with correct cell types', async ({ page }) => {

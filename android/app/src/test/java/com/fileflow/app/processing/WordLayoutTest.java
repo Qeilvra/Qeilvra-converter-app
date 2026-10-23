@@ -14,6 +14,20 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Test;
 
 public final class WordLayoutTest {
+    private WordLayout.Rule rule(float x,float y,float width,float height) { WordLayout.Rule r=new WordLayout.Rule();r.x=x;r.y=y;r.width=width;r.height=height;r.thickness=.75f;r.color="123456";return r; }
+    @Test public void ruledMergedMultilineAndEmptyCellsRemainActualWordTableCells() throws Exception {
+        List<Span> spans=new ArrayList<>(Arrays.asList(span("Merged heading",58,122,10),span("001234",58,155,10),span("First line",310,155,10),span("Continuation",310,170,10),span("009876",58,217,10)));
+        List<WordLayout.Rule> rules=new ArrayList<>();for(float y:new float[]{100,135,195,230})rules.add(rule(50,y,510,0));
+        rules.add(rule(50,100,0,130));rules.add(rule(560,100,0,130));rules.add(rule(300,135,0,95));
+        LocalWordDocument.Page page=new LocalWordDocument.Page();page.width=612;page.height=792;page.lines=group(spans);page.rules=rules;
+        List<WordLayout.Block> blocks=WordLayout.reconstruct(page.lines,rules);assertEquals(1,blocks.size());
+        WordLayout.Block table=blocks.get(0);assertNotNull(table.grid);assertEquals(3,table.grid.size());
+        assertEquals(2,table.grid.get(0).cells.get(0).columnSpan);assertEquals(2,table.grid.get(1).cells.get(1).lines.size());assertTrue(table.grid.get(2).cells.get(1).lines.isEmpty());
+        String xml=part(LocalWordDocument.create(Collections.singletonList(page)),"word/document.xml");assertTrue(xml.contains("w:gridSpan w:val=\"2\""));assertTrue(xml.contains("Continuation"));assertTrue(xml.contains("<w:br/>"));
+        rules.set(2,rule(300,195,260,0));page.blocks=null;
+        table=WordLayout.reconstruct(page.lines,rules).get(0);assertEquals(2,table.grid.get(1).cells.get(0).rowSpan);
+        xml=part(LocalWordDocument.create(Collections.singletonList(page)),"word/document.xml");assertTrue(xml.contains("w:vMerge w:val=\"restart\""));assertTrue(xml.contains("w:vMerge w:val=\"continue\""));
+    }
     private Span span(String text,float x,float y,float size) { return new Span(text,x,y,text.length()*size*.45f,size); }
     @Test public void paragraphsJoinContinuationsAndRespectVerticalSectionGaps() {
         Span heading=span("PROFILE",50,60,16); heading.font="Arial-Bold";

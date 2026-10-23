@@ -11,7 +11,9 @@ export type WordParagraph = {
   heading?: 'Title' | 'Heading1' | 'Heading2'; alignment: 'left' | 'center' | 'right';
   list?: 'bullet' | 'number'; role?: 'header' | 'footer';
 };
-export type WordTable = { kind: 'table'; lines: WordLine[]; rows: WordSpan[][][]; x: number; y: number; widths: number[]; borders: boolean; borderColor?: string; borderSize?: number };
+export type WordGridCell = { column: number; columnSpan: number; rowSpan: number; lines: WordLine[] };
+export type WordGridRow = { y: number; height: number; cells: WordGridCell[] };
+export type WordTable = { kind: 'table'; lines: WordLine[]; rows: WordSpan[][][]; x: number; y: number; widths: number[]; borders: boolean; borderColor?: string; borderSize?: number; grid?: WordGridRow[] };
 export type WordBlock = WordParagraph | WordTable;
 const right = (line: WordLine) => Math.max(...line.spans.map(s => s.x + s.width));
 const left = (line: WordLine) => Math.min(...line.spans.map(s => s.x));
@@ -26,6 +28,61 @@ const listType = (line: WordLine) => /^\s*[\u2022\u25cf\u25a0\u25e6\u2023\u2043\
 
 function slicedLine(line: WordLine, spans: WordSpan[]): WordLine {
   return { ...line, spans, cells: [spans], size: Math.max(...spans.map(s => s.size)) };
+}
+
+/** Recover an actual ruled grid before guessing a table from text alignment.
+ * Missing interior edges join primitive cells; only rectangular merges are accepted.
+ * Each source baseline stays in its cell, including blank cells and wrapped text.
+ */
+function ruledTableAt(page: WordPage, start: number): WordTable | undefined {
+  const first = page.lines[start]; const rules = page.rules ?? []; const tolerance = 1.5;
+  const horizontal = rules.filter(r => r.height < .3 && r.width > 20);
+  const vertical = rules.filter(r => r.width < .3 && r.height > 5);
+  const unique = (values: number[]) => values.sort((a, b) => a - b).filter((v, i, a) => !i || v - a[i - 1] > tolerance);
+  const tops = horizontal.filter(r => r.y < first.y && first.y - r.y <= first.size * 3 && r.x <= left(first) + tolerance && r.x + r.width >= right(first) - tolerance).sort((a, b) => b.y - a.y);
+  for (const top of tops) {
+    const x = top.x, edge = x + top.width;
+    const sides = [x, edge].map(at => vertical.find(r => Math.abs(r.x - at) <= tolerance && r.y <= top.y + tolerance && r.y + r.height > first.y));
+    if (!sides[0] || !sides[1]) continue;
+    const bottom = Math.min(...sides.map(r => r!.y + r!.height));
+    if (!horizontal.some(r => Math.abs(r.y - bottom) <= tolerance && r.x <= x + tolerance && r.x + r.width >= edge - tolerance)) continue;
+    const hs = horizontal.filter(r => r.y >= top.y - tolerance && r.y <= bottom + tolerance && r.x >= x - tolerance && r.x + r.width <= edge + tolerance);
+    const vs = vertical.filter(r => r.x >= x - tolerance && r.x <= edge + tolerance && r.y >= top.y - tolerance && r.y + r.height <= bottom + tolerance);
+    const xs = unique([x, edge, ...vs.map(r => r.x)]), ys = unique([top.y, bottom, ...hs.map(r => r.y)]);
+    const columns = xs.length - 1, rows = ys.length - 1;
+    if (columns < 2 || columns > 12 || rows < 2 || rows > 250 || rows * columns > 1000) continue;
+    let end = start;
+    while (end < page.lines.length && page.lines[end].y < bottom - tolerance) end++;
+    const lines = page.lines.slice(start, end);
+    if (lines.some(l => l.spans.some(s => s.x < x - tolerance || s.x + s.width > edge + tolerance))) continue;
+    const parents = Array.from({ length: rows * columns }, (_, i) => i);
+    const root = (i: number): number => parents[i] === i ? i : (parents[i] = root(parents[i]));
+    const join = (a: number, b: number) => { parents[root(b)] = root(a); };
+    const covers = (segments: number[][], lo: number, hi: number) => {
+      let reach = lo;
+      for (const [a, b] of segments.sort((a, b) => a[0] - b[0])) { if (a > reach + tolerance) break; reach = Math.max(reach, b); }
+      return reach >= hi - tolerance;
+    };
+    for (let r = 0; r < rows; r++) for (let c = 0; c < columns; c++) {
+      const id = r * columns + c;
+      if (c + 1 < columns && !covers(vs.filter(v => Math.abs(v.x - xs[c + 1]) <= tolerance).map(v => [v.y, v.y + v.height]), ys[r], ys[r + 1])) join(id, id + 1);
+      if (r + 1 < rows && !covers(hs.filter(h => Math.abs(h.y - ys[r + 1]) <= tolerance).map(h => [h.x, h.x + h.width]), xs[c], xs[c + 1])) join(id, id + columns);
+    }
+    const groups = new Map<number, number[]>();
+    parents.forEach((_, i) => { const id = root(i); groups.set(id, [...groups.get(id) ?? [], i]); });
+    const grid: WordGridRow[] = ys.slice(0, -1).map((y, i) => ({ y, height: ys[i + 1] - y, cells: [] }));
+    let valid = true;
+    for (const ids of groups.values()) {
+      const r0 = Math.min(...ids.map(i => Math.floor(i / columns))), r1 = Math.max(...ids.map(i => Math.floor(i / columns)));
+      const c0 = Math.min(...ids.map(i => i % columns)), c1 = Math.max(...ids.map(i => i % columns));
+      if (ids.length !== (r1 - r0 + 1) * (c1 - c0 + 1)) { valid = false; break; }
+      const cellLines = lines.map(l => slicedLine(l, l.spans.filter(s => s.y > ys[r0] && s.y <= ys[r1 + 1] && s.x + s.width / 2 >= xs[c0] && s.x + s.width / 2 < xs[c1 + 1]))).filter(l => l.spans.length);
+      grid[r0].cells.push({ column: c0, columnSpan: c1 - c0 + 1, rowSpan: r1 - r0 + 1, lines: cellLines });
+    }
+    if (!valid) continue;
+    grid.forEach(r => r.cells.sort((a, b) => a.column - b.column));
+    return { kind: 'table', lines, rows: [], x, y: top.y, widths: xs.slice(1).map((v, i) => v - xs[i]), borders: true, borderColor: top.color, borderSize: top.thickness, grid };
+  }
 }
 
 function tableAt(page: WordPage, start: number): WordTable | undefined {
@@ -137,7 +194,7 @@ export function reconstructWordPage(page: WordPage): { blocks: WordBlock[]; body
     pending = [];
   };
   for (let index = 0; index < page.lines.length;) {
-    const table = tableAt(page, index);
+    const table = ruledTableAt(page, index) ?? tableAt(page, index);
     if (table) { flush(); blocks.push(table); index += table.lines.length; }
     else pending.push(page.lines[index++]);
   }
@@ -165,7 +222,7 @@ export function wordFont(name: string): { family: string; substitution?: string 
   const clean = name.replace(/^[A-Z]{6}\+/, '').replace(/[,\-]?(BoldItalic|BoldOblique|Bold|Italic|Oblique|Regular|Semibold|Light|Medium)(PSMT|MT)?$/i, '').replace(/(PSMT|MT)$/i, '');
   const compact = clean.replace(/[\s_-]/g, '').toLowerCase();
   const known: Record<string, string> = { arial: 'Arial', arialmt: 'Arial', calibri: 'Calibri', cambria: 'Cambria', verdana: 'Verdana',
-    timesnewroman: 'Times New Roman', timesnewromanps: 'Times New Roman', couriernew: 'Courier New', couriernewps: 'Courier New', georgia: 'Georgia', tahoma: 'Tahoma',
+    timesroman: 'Times New Roman', timesnewroman: 'Times New Roman', timesnewromanps: 'Times New Roman', couriernew: 'Courier New', couriernewps: 'Courier New', georgia: 'Georgia', tahoma: 'Tahoma',
     helvetica: 'Arial', helveticaneue: 'Arial', times: 'Times New Roman', courier: 'Courier New', 'sansserif': 'Arial', serif: 'Times New Roman', monospace: 'Courier New' };
   const family = known[compact] ?? (clean || 'Arial');
   return { family, substitution: /^(helvetica|times|courier|sansserif|serif|monospace)$/.test(compact) ? `${name} → ${family}` : undefined };

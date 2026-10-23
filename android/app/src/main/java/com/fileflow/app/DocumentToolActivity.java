@@ -90,7 +90,10 @@ public final class DocumentToolActivity extends AppCompatActivity {
 
         findViewById(R.id.buttonBack).setOnClickListener(view -> finish());
         findViewById(R.id.buttonChoose).setOnClickListener(view -> choose());
-        processButton.setOnClickListener(view -> model.process(tool, actionSpinner.getSelectedItemPosition(), preview.getText() == null ? "" : preview.getText().toString()));
+        processButton.setOnClickListener(view -> {
+            if ("word-pdf".equals(tool) && actionSpinner.getSelectedItemPosition() == 0) openOfficeApp();
+            else model.process(tool, actionSpinner.getSelectedItemPosition(), preview.getText() == null ? "" : preview.getText().toString());
+        });
         findViewById(R.id.buttonSave).setOnClickListener(view -> { if (model.outputName != null) saveOutput.launch(model.outputName); });
         findViewById(R.id.buttonShare).setOnClickListener(view -> share());
         model.state().observe(this, this::render);
@@ -101,7 +104,25 @@ public final class DocumentToolActivity extends AppCompatActivity {
         switch (tool) {
             case "pdf-excel": title.setText(R.string.pdf_to_excel); description.setText(R.string.description_pdf_excel); break;
             case "pdf-word": title.setText(R.string.pdf_to_word); description.setText(R.string.description_pdf_word); break;
-            case "word-pdf": title.setText(R.string.word_to_pdf); description.setText(R.string.description_word_pdf); break;
+            case "word-pdf":
+                title.setText(R.string.word_to_pdf); description.setText(R.string.description_word_pdf);
+                actionSpinner.setVisibility(View.VISIBLE);
+                ArrayList<String> engines = new ArrayList<>();
+                engines.add(getString(R.string.word_pdf_office_app)); engines.add(getString(R.string.word_pdf_basic));
+                if (!BuildConfig.PROCESSING_API_URL.trim().isEmpty()) engines.add(getString(R.string.word_pdf_service));
+                actionSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, engines));
+                actionSpinner.setSelection(model.wordPdfEngine);
+                actionSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                    @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                        model.wordPdfEngine = position; invalidateOutput();
+                        processButton.setText(position == 0 ? R.string.word_pdf_open_app : position == 1 ? R.string.word_pdf_basic : R.string.process_file);
+                        ((TextView)findViewById(R.id.textPrivacy)).setText(position == 2
+                            ? getString(R.string.word_pdf_upload_notice, BuildConfig.PROCESSING_API_URL)
+                            : getString(position == 0 ? R.string.word_pdf_office_notice : R.string.privacy_local_pdf));
+                    }
+                    @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+                });
+                break;
             case "pdf-compress":
                 title.setText(R.string.pdf_compressor); description.setText(R.string.description_pdf_compress);
                 actionSpinner.setVisibility(View.VISIBLE);
@@ -127,6 +148,17 @@ public final class DocumentToolActivity extends AppCompatActivity {
                 ? new String[] {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
                 : new String[] {"application/pdf"};
         if ("pdf-editor".equals(tool)) openMultiple.launch(types); else openSingle.launch(types);
+    }
+
+    private void openOfficeApp() {
+        if (model.uris.isEmpty() || model.isWorking()) return;
+        Intent intent = new Intent(Intent.ACTION_VIEW).setDataAndType(model.uris.get(0), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setClipData(android.content.ClipData.newRawUri("Word document", model.uris.get(0)));
+        try {
+            startActivity(Intent.createChooser(intent, getString(R.string.word_pdf_open_app)));
+            status.setText(R.string.word_pdf_export_instructions);
+        } catch (android.content.ActivityNotFoundException missing) { status.setText(R.string.word_pdf_no_office_app); }
     }
 
     private void acceptSelection(List<Uri> selected) {

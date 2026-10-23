@@ -130,6 +130,7 @@ final class LocalWordDocument {
         return xml.toString();
     }
     private String table(WordLayout.Block block) throws IOException {
+        if (block.grid != null) return gridTable(block);
         float pad=Math.max(0,block.rows.get(0).get(0).get(0).x-block.x);
         float size=block.lines.get(0).size,top=Math.max(0,block.lines.get(0).y-block.y-size*1.2f+size*.26f-(block.bordered?block.borderSize/2:0));
         StringBuilder xml = new StringBuilder("<w:tbl><w:tblPr><w:tblpPr w:horzAnchor=\"page\" w:vertAnchor=\"page\" w:tblpX=\"");
@@ -143,6 +144,37 @@ final class LocalWordDocument {
             float height=r+1<block.lines.size()?block.lines.get(r+1).y-block.lines.get(r).y:r>0?block.lines.get(r).y-block.lines.get(r-1).y:block.lines.get(r).size*1.5f;
             xml.append("<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val=\"").append(twips(height)).append("\" w:hRule=\"exact\"/></w:trPr>");
             for(int c=0;c<block.rows.get(r).size();c++)xml.append("<w:tc><w:tcPr><w:tcW w:w=\"").append(twips(widths.get(c))).append("\" w:type=\"dxa\"/><w:vAlign w:val=\"top\"/></w:tcPr><w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"").append(twips(block.lines.get(r).size*1.2f)).append("\" w:lineRule=\"exact\"/></w:pPr>").append(runs(block.rows.get(r).get(c),0)).append("</w:p></w:tc>");
+            xml.append("</w:tr>");
+        }
+        return xml.append("</w:tbl>").toString();
+    }
+    private String gridTable(WordLayout.Block block) throws IOException {
+        WordGrid.Cell firstCell=block.grid.get(0).cells.get(0);
+        float tablePad=firstCell.lines.isEmpty()?0:Math.max(0,firstCell.lines.get(0).spans.get(0).x-block.x);
+        StringBuilder xml=new StringBuilder("<w:tbl><w:tblPr><w:tblpPr w:horzAnchor=\"page\" w:vertAnchor=\"page\" w:tblpX=\"");
+        xml.append(twips(block.x+tablePad)).append("\" w:tblpY=\"").append(twips(block.y)).append("\"/><w:tblW w:w=\"").append(twips(block.width)).append("\" w:type=\"dxa\"/><w:tblBorders>");
+        for(String side:new String[]{"top","left","bottom","right","insideH","insideV"})xml.append("<w:").append(side).append(" w:val=\"single\" w:sz=\"").append(Math.max(1,Math.round(block.borderSize*8))).append("\" w:color=\"").append(block.borderColor).append("\"/>");
+        xml.append("</w:tblBorders><w:tblLayout w:type=\"fixed\"/></w:tblPr><w:tblGrid>");
+        for(float width:block.widths)xml.append("<w:gridCol w:w=\"").append(twips(width)).append("\"/>");
+        xml.append("</w:tblGrid>");
+        for(int r=0;r<block.grid.size();r++) {
+            WordGrid.Row row=block.grid.get(r);xml.append("<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val=\"").append(twips(row.height)).append("\" w:hRule=\"exact\"/></w:trPr>");
+            float rowLeading=block.lines.get(0).size*1.2f;
+            for(WordGrid.Cell candidate:row.cells)if(!candidate.lines.isEmpty())rowLeading=Math.max(rowLeading,candidate.lines.size()>1?(candidate.lines.get(candidate.lines.size()-1).y-candidate.lines.get(0).y)/(candidate.lines.size()-1):candidate.lines.get(0).size*1.2f);
+            for(int c=0;c<block.widths.size();) {
+                WordGrid.Cell cell=null;int origin=r;
+                for(int i=0;i<=r;i++)for(WordGrid.Cell candidate:block.grid.get(i).cells)if(candidate.column==c&&i+candidate.rowSpan>r){cell=candidate;origin=i;}
+                if(cell==null)throw new IOException("Invalid recovered Word table grid.");
+                float width=0,left=block.x;for(int i=0;i<c;i++)left+=block.widths.get(i);for(int i=c;i<c+cell.columnSpan;i++)width+=block.widths.get(i);
+                Line first=cell.lines.isEmpty()?null:cell.lines.get(0);float size=first==null?block.lines.get(0).size:first.size;
+                float leading=rowLeading;
+                float top=first==null?0:Math.max(0,first.y-block.grid.get(origin).y-leading+size*.26f-block.borderSize/2),pad=first==null?0:Math.max(0,first.spans.get(0).x-left);
+                xml.append("<w:tc><w:tcPr><w:tcW w:w=\"").append(twips(width)).append("\" w:type=\"dxa\"/><w:gridSpan w:val=\"").append(cell.columnSpan).append("\"/>");
+                if(cell.rowSpan>1)xml.append("<w:vMerge w:val=\"").append(origin==r?"restart":"continue").append("\"/>");
+                xml.append("<w:tcMar><w:top w:w=\"").append(twips(top)).append("\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"").append(twips(pad)).append("\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tcMar><w:vAlign w:val=\"top\"/></w:tcPr><w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"").append(twips(leading)).append("\" w:lineRule=\"exact\"/></w:pPr>");
+                if(origin==r)for(int i=0;i<cell.lines.size();i++){if(i>0)xml.append("<w:r><w:br/></w:r>");xml.append(runs(cell.lines.get(i).spans,0));}
+                xml.append("</w:p></w:tc>");c+=cell.columnSpan;
+            }
             xml.append("</w:tr>");
         }
         return xml.append("</w:tbl>").toString();
